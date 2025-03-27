@@ -1,0 +1,95 @@
+export const staticText = {
+  auth: {
+    title: "Sign in to Medini",
+    subtitle: "Your highly intelligent AI assistant",
+    emailPlaceholder: "username@Medini.ai",
+    googleSignInButton: "Sign In with Google",
+    appleSignInButton: "Sign In with Apple",
+    orText: "or with Email",
+    passwordPlaceholder: "Password",
+    rememberMe: "Remember me",
+    forgotPassword: "Forgot Password?",
+    signInButton: "Sign In",
+    signupText: "Don't have an account?",
+    signupLink: "Sign Up",
+    privacyPolicyLink: "Privacy Policy",
+    copyright: "Copyright",
+    rightPanelHeading: "Working for you 24/7",
+    rightPanelText:
+      "The AI assistant that will answer calls to book your appointments any time of the day and call your clients for you with just the swipe of a mouse!",
+    signupPageText: "Sign up for an account",
+    privacyPolicyText: "By creating an account, you agreeing to our  ",
+    ElectronicsPolicyText: "Electronics Communication Policy.",
+    signUpButton: "Sign Up",
+    resetPasswordHeading: "Need help with your account?",
+    resetPasswordDescription:
+      "Enter the email address associated with your account and we will send you a link to reset your password.",
+    resetPasswordButton: "Send Link",
+    forgotEmailText: "Forgot your Email?",
+    nameYourCalenderText: "Name your calendar",
+    nameYourCalenderDescription: "eg. Dr. Zee Cal",
+    stepContinueText: "Continue",
+    inviteCollaboratorText: "Invite Collaborators?",
+    inviteCollaboratorDescription:
+      "email up to 10 people to co-manage your calendar.",
+    inviteBUttonText: "Invite",
+  },
+  firestore:{
+    accountSucceededMessage:"Account created successfully.",
+    successLoggedInMessage:"Welcome back! You are successfully logged in.",
+    passwordResetText: "Password reset email sent successfully. Check your inbox.",
+    signInWithGoogleMessage: "Successfully signed in with Google!",
+    signInWithAppMessage: "Successfully signed in with Apple!"
+  }
+};
+
+// Top films as rated by IMDb users. http://www.imdb.com/chart/top
+export const topFilms = [
+  { title: "The Shawshank Redemption", year: 1994 },
+  { title: "The Godfather", year: 1972 },
+  { title: "The Godfather: Part II", year: 1974 },
+  { title: "The Dark Knight", year: 2008 },
+  { title: "12 Angry Men", year: 1957 },
+  { title: "Schindler's List", year: 1993 },
+  { title: "Pulp Fiction", year: 1994 },
+  {
+    title: "The Lord of the Rings: The Return of the King",
+    year: 2003,
+  },
+  { title: "The Good, the Bad and the Ugly", year: 1966 },
+  { title: "Fight Club", year: 1999 },
+  {
+    title: "The Lord of the Rings: The Fellowship of the Ring",
+    year: 2001,
+  },
+  {
+    title: "Star Wars: Episode V - The Empire Strikes Back",
+    year: 1980,
+  },
+  { title: "Forrest Gump", year: 1994 },
+  { title: "Inception", year: 2010 },
+  {
+    title: "The Lord of the Rings: The Two Towers",
+    year: 2002,
+  },
+  { title: "One Flew Over the Cuckoo's Nest", year: 1975 },
+  { title: "Goodfellas", year: 1990 },
+  { title: "The Matrix", year: 1999 },
+  { title: "Seven Samurai", year: 1954 },
+  {
+    title: "Star Wars: Episode IV - A New Hope",
+    year: 1977,
+  },
+  { title: "City of God", year: 2002 },
+  { title: "Se7en", year: 1995 },
+  { title: "The Silence of the Lambs", year: 1991 },
+  { title: "It's a Wonderful Life", year: 1946 },
+  { title: "Life Is Beautiful", year: 1997 },
+  { title: "The Usual Suspects", year: 1995 },
+  { title: "Léon: The Professional", year: 1994 },
+  { title: "Spirited Away", year: 2001 },
+  { title: "Saving Private Ryan", year: 1998 },
+  { title: "Once Upon a Time in the West", year: 1968 },
+  { title: "American History X", year: 1998 },
+  { title: "Interstellar", year: 2014 },
+];
