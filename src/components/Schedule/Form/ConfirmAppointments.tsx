@@ -77,7 +77,7 @@ const ConfirmAppointments = () => {
       });
       setSnackbar({
         open: true,
-        message: "Appointments confirmed successfully",
+        message: `Texts/Calls will be sent ${data.days} days in advance`,
         severity: "success",
       });
       setIsEditMode(false);
