@@ -16,7 +16,7 @@ import MoreVertIcon from "../../assets/icons/dots-vertical.svg";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import EditIcon from "../../assets/icons/edit-table.svg";
-import PrintIcon from "../../assets/icons/printer.svg";
+// import PrintIcon from "../../assets/icons/printer.svg";
 import CancelIcon from "../../assets/icons/cancel-table.svg";
 import DeleteIcon from "../../assets/icons/delete-tr.svg";
 import SortIcon from "../../assets/icons/arrows-down-up.svg";
