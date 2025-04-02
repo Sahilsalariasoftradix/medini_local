@@ -442,7 +442,7 @@ const CallCenter = () => {
   const [orderBy, setOrderBy] = useState<keyof Data>("contact");
   const [selected, setSelected] = useState<readonly number[]>([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(7);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openAddCallDetails, setOpenAddCallDetails] = useState(false);
   const [contacts, setContacts] = useState<IGetContacts>([]);
   // Search contact inputs
