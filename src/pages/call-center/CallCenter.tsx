@@ -16,7 +16,7 @@ import MoreVertIcon from "../../assets/icons/dots-vertical.svg";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import EditIcon from "../../assets/icons/edit-table.svg";
-import PrintIcon from "../../assets/icons/printer.svg";
+// import PrintIcon from "../../assets/icons/printer.svg";
 import CancelIcon from "../../assets/icons/cancel-table.svg";
 import DeleteIcon from "../../assets/icons/delete-tr.svg";
 import SortIcon from "../../assets/icons/arrows-down-up.svg";
@@ -360,13 +360,13 @@ const ActionMenu = ({
             Edit
           </Typography>
         </MenuItem>
-        <MenuItem onClick={handleAction("print")} sx={{ gap: 1 }}>
+        {/* <MenuItem onClick={handleAction("print")} sx={{ gap: 1 }}>
           <img src={PrintIcon} alt="" />
           <Typography variant="bodySmallSemiBold" color="grey.600">
             {" "}
             Print
           </Typography>
-        </MenuItem>
+        </MenuItem> */}
         <MenuItem onClick={handleAction("cancel")} sx={{ gap: 1 }}>
           <img src={CancelIcon} alt="" />
           <Typography variant="bodySmallSemiBold" color="grey.600">
@@ -1147,9 +1147,9 @@ const CallCenter = () => {
                       },
                     }}
                   >
-                    <MenuItem value={7}>7</MenuItem>
+                    {/* <MenuItem value={5}>5</MenuItem> */}
                     <MenuItem value={10}>10</MenuItem>
-                    <MenuItem value={25}>25</MenuItem>
+                    <MenuItem value={20}>20</MenuItem>
                     <MenuItem value={50}>50</MenuItem>
                   </Select>
                 </Box>
@@ -1270,6 +1270,7 @@ const CallCenter = () => {
                     newValue ? newValue.format("YYYY-MM-DD HH:mm:ss") : null
                   );
                 }}
+                
                 slotProps={{
                   textField: {
                     placeholder: "Select Date & Time",
