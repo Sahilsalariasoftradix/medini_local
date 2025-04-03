@@ -66,6 +66,7 @@ const SlotBookingForm: React.FC<ISlotBookingFormProps> = ({
     email: contact.email,
     phone: contact.phone,
   }));
+  
 
   return (
     <>

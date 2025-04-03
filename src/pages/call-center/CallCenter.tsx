@@ -60,7 +60,10 @@ import addIcon from "../../assets/icons/add-icn.svg";
 import AddContact from "../../components/Booking/Form/AddContact";
 import CustomSelect from "../../components/common/CustomSelect";
 
-import { EnCallPurposeOptionsValues } from "../../utils/enums";
+import {
+  EnCallPurposeOptionsValues,
+  EnGetCallHistory,
+} from "../../utils/enums";
 import { useAuth } from "../../store/AuthContext";
 import CommonSnackbar from "../../components/common/CommonSnackbar";
 import {
@@ -81,6 +84,7 @@ import { callPurposeOptions, headCells } from "../../utils/common";
 import { calenderIcon } from "../../components/Booking/Form/SlotBookingForm";
 import { EnShowPurposeUI } from "../../utils/enums";
 import { CircularProgress } from "@mui/material";
+import useDebounce from "../../hooks/useDebounce";
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
@@ -448,6 +452,7 @@ const CallCenter = () => {
   // Search contact inputs
   const [openContactSearch, setOpenContactSearch] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
+  console.log(selectedContact)
   const [openAddContact, setOpenAddContact] = useState(false);
   const [companyPhone, setCompanyPhone] = useState("");
   //@ts-ignore
@@ -462,6 +467,11 @@ const CallCenter = () => {
   const [currentEditingCall, setCurrentEditingCall] = useState<Data | null>(
     null
   );
+  const [callHistoryStatus, setCallHistoryStatus] = useState<EnGetCallHistory>(
+    EnGetCallHistory.PENDING
+  );
+  const [searchCalls, setSearchCalls] = useState("");
+  const debouncedSearchValue = useDebounce(searchCalls, 300);
 
   const {
     control,
@@ -527,7 +537,10 @@ const CallCenter = () => {
   const refreshCallHistory = async () => {
     setTableLoading(true);
     try {
-      const callHistory = await getCallHistoryData(userDetails?.user_id);
+      const callHistory = await getCallHistoryData(
+        userDetails?.user_id,
+        callHistoryStatus ? callHistoryStatus : ""
+      );
       setGetCallHistory(callHistory);
     } catch (error) {
       console.error("Error fetching call history:", error);
@@ -653,7 +666,7 @@ const CallCenter = () => {
         ).format("DD/MM/YYYY"),
         status: status,
         length: call.duration ? call.duration + " mins" : "--",
-        details: "--",
+        details: call.payload?.call_reason ? call.payload.call_reason : "--",
       };
     });
 
@@ -665,11 +678,17 @@ const CallCenter = () => {
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
     );
   }, [order, orderBy, page, rowsPerPage, getCallHistory]);
+  console.log(selectedContact)
+
   useEffect(() => {
     (async () => {
       setTableLoading(true);
       try {
-        const bookings = await getBookingsByUser(userDetails?.user_id);
+        const bookings = await getBookingsByUser(
+          userDetails?.user_id,
+          //@ts-ignore
+          selectedContact?.phone
+        );
         setGetBookingByUser(bookings);
       } catch (error) {
         console.error("Error fetching bookings:", error);
@@ -678,12 +697,16 @@ const CallCenter = () => {
       }
     })();
   }, []);
+  console.log(getBookingByUser)
 
   useEffect(() => {
     (async () => {
       setTableLoading(true);
       try {
-        const callHistory = await getCallHistoryData(userDetails?.user_id);
+        const callHistory = await getCallHistoryData(
+          userDetails?.user_id,
+          callHistoryStatus ? callHistoryStatus : ""
+        );
         setGetCallHistory(callHistory);
       } catch (error) {
         console.error("Error fetching call history:", error);
@@ -691,10 +714,9 @@ const CallCenter = () => {
         setTableLoading(false);
       }
     })();
-  }, []);
+  }, [callHistoryStatus]);
 
   // Add a function to handle editing a call
-  console.log(getCallHistory);
   const handleEditCall = (callData: Data) => {
     setCurrentEditingCall(callData);
 
@@ -914,6 +936,8 @@ const CallCenter = () => {
           <CommonTextField
             startIcon={<img src={searchIcon} alt="down" />}
             placeholder="Search Calls"
+            value={debouncedSearchValue}
+            onChange={(e) => setSearchCalls(e.target.value)}
             sx={{ maxWidth: "300px", "& .MuiInputBase-input": { py: "11px" } }}
           />
 
@@ -929,18 +953,41 @@ const CallCenter = () => {
               sx={{
                 borderRadius: "50px",
                 boxShadow: "none",
-                backgroundColor: "grey.200",
+                backgroundColor: "grey.50",
                 padding: "8px",
+                "& .MuiButtonGroup-firstButton": {
+                  border:
+                    callHistoryStatus === EnGetCallHistory.PENDING
+                      ? "none"
+                      : "1px solid #E2E8F0",
+                },
               }}
             >
               <CommonButton
                 text="Pending Calls"
-                sx={{ borderRadius: "50px" }}
+                onClick={() => setCallHistoryStatus(EnGetCallHistory.PENDING)}
+                sx={{
+                  borderRadius: "50px",
+                  maxHeight: "40px",
+                }}
+                variant={
+                  callHistoryStatus === EnGetCallHistory.PENDING
+                    ? "contained"
+                    : "outlined"
+                }
               />
               <CommonButton
-                variant="outlined"
-                sx={{ borderRadius: "50px" }}
+                variant={
+                  callHistoryStatus === EnGetCallHistory.COMPLETED
+                    ? "contained"
+                    : "outlined"
+                }
+                sx={{
+                  borderRadius: "50px",
+                  maxHeight: "40px",
+                }}
                 text="Completed Calls"
+                onClick={() => setCallHistoryStatus(EnGetCallHistory.COMPLETED)}
               />
             </ButtonGroup>
           </Box>
@@ -969,7 +1016,7 @@ const CallCenter = () => {
           />
         </Box>
       </Box>
-      <Box sx={{ width: "100%" }} mt={4}>
+      <Box sx={{ width: "100%" }} mt={3}>
         <Paper sx={{ width: "100%", mb: 2, boxShadow: "none", p: 0 }}>
           {tableLoading ? (
             <Box
@@ -1061,16 +1108,16 @@ const CallCenter = () => {
                                   row.status === EnShowPurposeUI.CANCELLED
                                     ? "error"
                                     : row.status === EnShowPurposeUI.BOOKED
-                                    ? "success"
-                                    : row.status === EnShowPurposeUI.RESCHEDULED
-                                    ? "error"
-                                    : row.status === EnShowPurposeUI.FAILED
-                                    ? "error"
-                                    : row.status === EnShowPurposeUI.SCHEDULED
-                                    ? "success"
-                                    : row.status === EnShowPurposeUI.REQUESTINFO
-                                    ? "warning"
-                                    : "default"
+                                      ? "success"
+                                      : row.status === EnShowPurposeUI.RESCHEDULED
+                                        ? "error"
+                                        : row.status === EnShowPurposeUI.FAILED
+                                          ? "error"
+                                          : row.status === EnShowPurposeUI.SCHEDULED
+                                            ? "success"
+                                            : row.status === EnShowPurposeUI.REQUESTINFO
+                                              ? "warning"
+                                              : "default"
                                 }
                               />
                             </TableCell>
@@ -1270,7 +1317,6 @@ const CallCenter = () => {
                     newValue ? newValue.format("YYYY-MM-DD HH:mm:ss") : null
                   );
                 }}
-                
                 slotProps={{
                   textField: {
                     placeholder: "Select Date & Time",
@@ -1295,41 +1341,41 @@ const CallCenter = () => {
           EnCallPurposeOptionsValues.CANCEL,
           EnCallPurposeOptionsValues.RESCHEDULE,
         ].includes(callPurpose as EnCallPurposeOptionsValues) && (
-          <Box mt={2}>
-            <Typography variant="bodySmallMedium" color="grey.600" mb={1}>
-              Appointment to{" "}
-              {callPurpose === EnCallPurposeOptionsValues.RESCHEDULE
-                ? "reschedule"
-                : "cancel"}
-            </Typography>
-            <Controller
-              name="appointmentId"
-              control={control}
-              render={({ field }) => (
-                <CommonTextField
-                  {...field}
-                  select
-                  fullWidth
-                  error={!!errors.appointmentId}
-                  helperText={errors.appointmentId?.message}
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)} // Ensure onChange is properly set
-                  placeholder="Select Appointment"
-                >
-                  {getBookingByUser?.bookings?.map((booking: IBooking) => (
-                    <MenuItem
-                      key={booking?.booking_id?.toString()}
-                      value={booking?.booking_id?.toString()}
-                    >
-                      {dayjs(booking?.date).format("DD-MM-YYYY")} {" ,"}
-                      {booking.start_time}
-                    </MenuItem>
-                  ))}
-                </CommonTextField>
-              )}
-            />
+            <Box mt={2}>
+              <Typography variant="bodySmallMedium" color="grey.600" mb={1}>
+                Appointment to{" "}
+                {callPurpose === EnCallPurposeOptionsValues.RESCHEDULE
+                  ? "reschedule"
+                  : "cancel"}
+              </Typography>
+              <Controller
+                name="appointmentId"
+                control={control}
+                render={({ field }) => (
+                  <CommonTextField
+                    {...field}
+                    select
+                    fullWidth
+                    error={!!errors.appointmentId}
+                    helperText={errors.appointmentId?.message}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)} // Ensure onChange is properly set
+                    placeholder="Select Appointment"
+                  >
+                    {getBookingByUser?.bookings?.map((booking: IBooking) => (
+                      <MenuItem
+                        key={booking?.booking_id?.toString()}
+                        value={booking?.booking_id?.toString()}
+                      >
+                        {dayjs(booking?.date).format("DD-MM-YYYY")} {" ,"}
+                        {booking.start_time}
+                      </MenuItem>
+                    ))}
+                  </CommonTextField>
+                )}
+              />
 
-            {/* <Controller
+              {/* <Controller
               name="appointmentId"
               control={control}
               render={({ field }) => (
@@ -1349,8 +1395,8 @@ const CallCenter = () => {
                 />
               )}
             /> */}
-          </Box>
-        )}
+            </Box>
+          )}
 
         {/* Add Reason for appointment field */}
         <Box mt={2}>
@@ -1359,10 +1405,10 @@ const CallCenter = () => {
             {callPurpose === EnCallPurposeOptionsValues.BOOK
               ? "appointment"
               : callPurpose === EnCallPurposeOptionsValues.RESCHEDULE
-              ? "reschedule"
-              : callPurpose === EnCallPurposeOptionsValues.CANCEL
-              ? "cancellation"
-              : "call"}
+                ? "reschedule"
+                : callPurpose === EnCallPurposeOptionsValues.CANCEL
+                  ? "cancellation"
+                  : "call"}
           </Typography>
 
           <Controller
@@ -1391,165 +1437,165 @@ const CallCenter = () => {
           EnCallPurposeOptionsValues.BOOK,
           EnCallPurposeOptionsValues.RESCHEDULE,
         ].includes(callPurpose as EnCallPurposeOptionsValues) && (
-          <>
-            {/* Add In Person Only toggle */}
-            <Box mt={2}>
-              <Typography variant="bodyMediumMedium" mb={1}>
-                In Person Only?
-              </Typography>
-              <Box display="flex" gap={4}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Controller
-                    name="inPersonOnly"
-                    control={control}
-                    render={({ field }) => (
-                      <RoundCheckbox
-                        checked={field.value === true}
-                        onChange={() => field.onChange(true)}
-                        label=""
-                      />
-                    )}
-                  />
-                  <Typography variant="bodyMediumMedium">Yes</Typography>
-                </Box>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Controller
-                    name="inPersonOnly"
-                    control={control}
-                    render={({ field }) => (
-                      <RoundCheckbox
-                        checked={field.value === false}
-                        onChange={() => field.onChange(false)}
-                        label=""
-                      />
-                    )}
-                  />
-                  <Typography variant="bodyMediumMedium">No</Typography>
+            <>
+              {/* Add In Person Only toggle */}
+              <Box mt={2}>
+                <Typography variant="bodyMediumMedium" mb={1}>
+                  In Person Only?
+                </Typography>
+                <Box display="flex" gap={4}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Controller
+                      name="inPersonOnly"
+                      control={control}
+                      render={({ field }) => (
+                        <RoundCheckbox
+                          checked={field.value === true}
+                          onChange={() => field.onChange(true)}
+                          label=""
+                        />
+                      )}
+                    />
+                    <Typography variant="bodyMediumMedium">Yes</Typography>
+                  </Box>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Controller
+                      name="inPersonOnly"
+                      control={control}
+                      render={({ field }) => (
+                        <RoundCheckbox
+                          checked={field.value === false}
+                          onChange={() => field.onChange(false)}
+                          label=""
+                        />
+                      )}
+                    />
+                    <Typography variant="bodyMediumMedium">No</Typography>
+                  </Box>
                 </Box>
               </Box>
-            </Box>
 
-            {/* Add Book Between section */}
-            <Typography variant="bodyMediumMedium" mt={3} mb={1}>
-              Book Between
-            </Typography>
-
-            {/* From date */}
-            <Box mt={2}>
-              <Typography variant="bodySmallMedium" color="grey.600" mb={1}>
-                From
+              {/* Add Book Between section */}
+              <Typography variant="bodyMediumMedium" mt={3} mb={1}>
+                Book Between
               </Typography>
-              <Controller
-                name="bookingStartDate"
-                control={control}
-                render={({ field: { onChange, value, ...field } }) => (
-                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DatePicker
-                      {...field}
-                      sx={{
-                        width: "100%",
-                      }}
-                      value={value ? dayjs(value) : null}
-                      onChange={(newValue) => {
-                        onChange(
-                          newValue ? newValue.format("YYYY-MM-DD") : null
-                        );
-                      }}
-                      minDate={dayjs()}
-                      slotProps={{
-                        textField: {
-                          error: !!errors.bookingStartDate,
-                          helperText: errors.bookingStartDate?.message,
-                        },
-                      }}
-                      slots={{ openPickerIcon: calenderIcon }}
-                    />
-                  </LocalizationProvider>
-                )}
-              />
-            </Box>
 
-            {/* Not Later Than */}
-            <Box mt={2}>
-              <Typography variant="bodySmallMedium" color="grey.600" mb={1}>
-                Not Later Than
-              </Typography>
-              <Controller
-                name="bookingEndDate"
-                control={control}
-                render={({ field: { onChange, value, ...field } }) => (
-                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DatePicker
-                      {...field}
-                      sx={{
-                        width: "100%",
-                      }}
-                      minDate={dayjs()}
-                      value={value ? dayjs(value) : null}
-                      onChange={(newValue) => {
-                        onChange(
-                          newValue ? newValue.format("YYYY-MM-DD") : null
-                        );
-                      }}
-                      slotProps={{
-                        textField: {
-                          error: !!errors.bookingEndDate,
-                          helperText: errors.bookingEndDate?.message,
-                        },
-                      }}
-                      slots={{ openPickerIcon: calenderIcon }}
-                    />
-                  </LocalizationProvider>
-                )}
-              />
-            </Box>
+              {/* From date */}
+              <Box mt={2}>
+                <Typography variant="bodySmallMedium" color="grey.600" mb={1}>
+                  From
+                </Typography>
+                <Controller
+                  name="bookingStartDate"
+                  control={control}
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        {...field}
+                        sx={{
+                          width: "100%",
+                        }}
+                        value={value ? dayjs(value) : null}
+                        onChange={(newValue) => {
+                          onChange(
+                            newValue ? newValue.format("YYYY-MM-DD") : null
+                          );
+                        }}
+                        minDate={dayjs()}
+                        slotProps={{
+                          textField: {
+                            error: !!errors.bookingStartDate,
+                            helperText: errors.bookingStartDate?.message,
+                          },
+                        }}
+                        slots={{ openPickerIcon: calenderIcon }}
+                      />
+                    </LocalizationProvider>
+                  )}
+                />
+              </Box>
 
-            {/* Appointment Length */}
-            <Box mt={2}>
-              <Typography
-                variant="bodySmallMedium"
-                color="grey.600"
-                mb={1}
-                display="flex"
-                alignItems="center"
-                gap={1}
-              >
-                Length
-                <Box
-                  component="span"
-                  sx={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: "50%",
-                    border: "1px solid #E2E8F0",
-                    display: "inline-flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    fontSize: "10px",
-                    color: "grey.500",
-                  }}
+              {/* Not Later Than */}
+              <Box mt={2}>
+                <Typography variant="bodySmallMedium" color="grey.600" mb={1}>
+                  Not Later Than
+                </Typography>
+                <Controller
+                  name="bookingEndDate"
+                  control={control}
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        {...field}
+                        sx={{
+                          width: "100%",
+                        }}
+                        minDate={dayjs()}
+                        value={value ? dayjs(value) : null}
+                        onChange={(newValue) => {
+                          onChange(
+                            newValue ? newValue.format("YYYY-MM-DD") : null
+                          );
+                        }}
+                        slotProps={{
+                          textField: {
+                            error: !!errors.bookingEndDate,
+                            helperText: errors.bookingEndDate?.message,
+                          },
+                        }}
+                        slots={{ openPickerIcon: calenderIcon }}
+                      />
+                    </LocalizationProvider>
+                  )}
+                />
+              </Box>
+
+              {/* Appointment Length */}
+              <Box mt={2}>
+                <Typography
+                  variant="bodySmallMedium"
+                  color="grey.600"
+                  mb={1}
+                  display="flex"
+                  alignItems="center"
+                  gap={1}
                 >
-                  i
-                </Box>
-              </Typography>
-              <CustomSelect
-                name="appointmentLength"
-                control={control}
-                errors={errors}
-                options={[
-                  { label: "15 minutes", value: "15" },
-                  { label: "30 minutes", value: "30" },
-                  { label: "45 minutes", value: "45" },
-                  { label: "1 hour", value: "60" },
-                  { label: "1 hour 15 minutes", value: "75" },
-                  { label: "1 hour 30 minutes", value: "90" },
-                  { label: "1 hour 45 minutes", value: "105" },
-                  { label: "2 hours", value: "120" },
-                ]}
-              />
-            </Box>
-          </>
-        )}
+                  Length
+                  <Box
+                    component="span"
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      border: "1px solid #E2E8F0",
+                      display: "inline-flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      fontSize: "10px",
+                      color: "grey.500",
+                    }}
+                  >
+                    i
+                  </Box>
+                </Typography>
+                <CustomSelect
+                  name="appointmentLength"
+                  control={control}
+                  errors={errors}
+                  options={[
+                    { label: "15 minutes", value: "15" },
+                    { label: "30 minutes", value: "30" },
+                    { label: "45 minutes", value: "45" },
+                    { label: "1 hour", value: "60" },
+                    { label: "1 hour 15 minutes", value: "75" },
+                    { label: "1 hour 30 minutes", value: "90" },
+                    { label: "1 hour 45 minutes", value: "105" },
+                    { label: "2 hours", value: "120" },
+                  ]}
+                />
+              </Box>
+            </>
+          )}
 
         {!isEditing && (
           <AddContact

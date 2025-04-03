@@ -129,3 +129,8 @@ export enum EnBookingDuration {
   DURATION_45 = "45",
   DURATION_60 = "60",
 }
+export enum EnGetCallHistory {
+  COMPLETED = "completed",
+  PENDING = "pending",
+ 
+}

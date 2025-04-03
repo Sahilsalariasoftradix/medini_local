@@ -308,7 +308,6 @@ export interface Data {
   length: string;
   details: string;
   status?: EnShowPurposeUI;
-  
 }
 export interface HeadCell {
   disablePadding: boolean;
@@ -343,5 +342,20 @@ export interface ICallHistory {
   call_purpose: string;
   scheduled_time?: string;
   call_failed?: boolean;
+  payload: {
+    call_reason: string;
+  } | null;
 }
-
+export interface ICompanyUsers {
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+}
+export interface ICompanyData {
+  company_id: number;
+  company_name: string;
+  max_appointment_time: number;
+  users: ICompanyUsers[];
+}

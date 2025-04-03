@@ -9,59 +9,67 @@ import * as z from "zod";
 import CommonTextField from "../../common/CommonTextField";
 import { EnStepProgress } from "../../../utils/enums";
 import StepProgress from "../StepProgress";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs, { Dayjs } from "dayjs";
+import { useEffect, useState } from "react";
+import { calenderIcon } from "../../Booking/Form/SlotBookingForm";
+import { getAvailability, getBookings } from "../../../api/userApi";
+import { useAuth } from "../../../store/AuthContext";
+import { IGetAvailability, TGetBooking } from "../../../utils/Interfaces";
 
 // Define validation schema with zod
 const validationSchema = z.object({
   businessName: z.string().min(1, "Business name is required"),
-  // date: z.instanceof(Date, { message: "Date is required" }),
-  // time: z.instanceof(Date, { message: "Time is required" }),
   time: z.string().min(1, "Time is required"),
   appointmentLength: z.string().min(1, "Appointment length is required"),
   appointmentType: z.string().min(1, "Appointment type is required"),
   practitioner: z.string().min(1, "Practitioner is required"),
-  day: z.string().min(1, "Day is required"),
+  day: z.instanceof(Date, { message: "Date is required" }),
 });
 
 // Create type from schema
 type FormValues = z.infer<typeof validationSchema>;
 
 const NewAppointmentStep2 = () => {
-  const { step, setStep, newAppointmentData, setNewAppointmentData } =
-    useAppointmentChecker();
+  const {
+    step,
+    setStep,
+    newAppointmentData,
+    setNewAppointmentData,
+    companyDetails,
+    practitioners,
+    setPractitioners,
+  } = useAppointmentChecker();
+  const { userDetails } = useAuth();
 
-  // Initialize with existing data if available
-  // const [selectedDate, setSelectedDate] = useState<Dayjs | null>(
-  //   newAppointmentData?.date ? dayjs(newAppointmentData.date) : null
-  // );
-  // const [selectedTime, setSelectedTime] = useState<Dayjs | null>(
-  //   newAppointmentData?.time ? dayjs(newAppointmentData.time) : null
-  // );
-
+  // Initialize selectedDate state
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(
+    newAppointmentData?.day ? dayjs(newAppointmentData.day) : dayjs()
+  );
+  const [availability, setAvailability] = useState<IGetAvailability[]>([]);
+  const [bookings, setBookings] = useState<TGetBooking[]>([]);
   // Initialize react-hook-form with controller for complex inputs
   const {
     // register,
     handleSubmit,
     control,
     formState: { errors },
+    watch,
     // setValue,
   } = useForm<FormValues>({
     resolver: zodResolver(validationSchema),
     defaultValues: {
-      practitioner: newAppointmentData?.practitioner ?? "Dr Johnny",
-      // date: newAppointmentData?.date
-      //   ? new Date(newAppointmentData.date)
-      //   : undefined,
-      // time: newAppointmentData?.time
-      //   ? new Date(newAppointmentData.time)
-      //   : undefined,
+      practitioner: newAppointmentData?.practitioner ?? "",
       time: newAppointmentData?.time ?? "10:00",
       appointmentLength: newAppointmentData?.appointmentLength ?? "15",
       appointmentType: newAppointmentData?.appointmentType ?? "inPerson",
-      businessName: newAppointmentData?.businessName ?? "Business Name 1",
-      day: newAppointmentData?.day ?? "Monday",
+      businessName: newAppointmentData?.businessName ?? "",
+      //@ts-ignore
+      day: newAppointmentData?.day ?? dayjs(),
     },
   });
-  console.log(errors);
 
   const onSubmit = (data: FormValues) => {
     // Save form data to context
@@ -73,7 +81,6 @@ const NewAppointmentStep2 = () => {
     // Navigate to confirmation step
     setStep(step + 1);
   };
-  console.log(errors);
 
   // Static data for available times based on day
   const availableTimesByDay = {
@@ -118,15 +125,16 @@ const NewAppointmentStep2 = () => {
     ],
   };
 
-  // Filter times based on selected day and appointment type
+  // Filter times based on selected date and appointment type
   const getFilteredTimes = () => {
-    const day = control._formValues.day;
+    const date = selectedDate;
     const appointmentType = control._formValues.appointmentType;
 
-    if (!day || !appointmentType) return [];
+    if (!date || !appointmentType) return [];
 
+    const dayOfWeek = date.format("dddd"); // Get day name (Monday, Tuesday, etc.)
     const timesForDay =
-      availableTimesByDay[day as keyof typeof availableTimesByDay] || [];
+      availableTimesByDay[dayOfWeek as keyof typeof availableTimesByDay] || [];
 
     return timesForDay.filter((slot: { time: string; type: string }) => {
       if (appointmentType === "phoneCall") {
@@ -139,6 +147,43 @@ const NewAppointmentStep2 = () => {
       return false;
     });
   };
+
+  const handleBusinessChange = (companyId: string) => {
+    const selectedCompany = companyDetails?.find(
+      (company) => company.company_id == Number(companyId)
+    );
+    if (selectedCompany && selectedCompany.users) {
+      setPractitioners(selectedCompany.users);
+    } else {
+      setPractitioners([]);
+    }
+  };
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const availability = await getAvailability({
+          user_id: Number(control._formValues.practitioner),
+          date: selectedDate!.format("YYYY-MM-DD"),
+          range: "day",
+        });
+        setAvailability(availability.availability);
+      } catch (error) {
+        console.error("Error fetching availability:", error);
+      }
+    };
+    const fetchBookings = async () => {
+      const bookings = await getBookings({
+        user_id: Number(control._formValues.practitioner),
+        date: selectedDate!.format("YYYY-MM-DD"),
+        range: "day",
+      });
+      setBookings(bookings.bookings);
+    };
+    fetchAvailability();
+    fetchBookings();
+  }, [selectedDate, watch("practitioner")]);
+
 
   return (
     <Box>
@@ -160,17 +205,41 @@ const NewAppointmentStep2 = () => {
             <Controller
               name="businessName"
               control={control}
-              render={({ field }) => (
+              render={({ field: { onChange, value, ...restField } }) => (
                 <CommonTextField
-                  {...field}
+                  {...restField}
+                  value={value || ""}
                   select
-                  defaultValue={"Business Name 1"}
                   fullWidth
                   error={!!errors.businessName}
                   helperText={errors.businessName?.message}
+                  onChange={(e) => {
+                    onChange(e);
+                    handleBusinessChange(e.target.value);
+                  }}
+                  SelectProps={{
+                    displayEmpty: true,
+                    MenuProps: {
+                      PaperProps: {
+                        style: {
+                          maxHeight: 200,
+                          overflow: "auto",
+                        },
+                      },
+                    },
+                  }}
                 >
-                  <MenuItem value="Business Name 1">Business Name 1</MenuItem>
-                  <MenuItem value="Business Name 2">Business Name 2 </MenuItem>
+                  <MenuItem value="">
+                    <em>Select Business Name</em>
+                  </MenuItem>
+                  {companyDetails.map((company) => (
+                    <MenuItem
+                      key={company.company_id}
+                      value={company.company_id.toString()}
+                    >
+                      {company.company_name}
+                    </MenuItem>
+                  ))}
                 </CommonTextField>
               )}
             />
@@ -186,20 +255,40 @@ const NewAppointmentStep2 = () => {
               <Controller
                 name="practitioner"
                 control={control}
-                render={({ field }) => (
+                render={({ field: { onChange, value, ...restField } }) => (
                   <CommonTextField
-                    {...field}
+                    {...restField}
+                    value={value || ""}
+                    onChange={(e) => {
+                      onChange(e);
+                    }}
                     select
                     fullWidth
                     error={!!errors.practitioner}
                     helperText={errors.practitioner?.message}
+                    SelectProps={{
+                      displayEmpty: true,
+                      MenuProps: {
+                        PaperProps: {
+                          style: {
+                            maxHeight: 200,
+                            overflow: "auto",
+                          },
+                        },
+                      },
+                    }}
                   >
-                    <MenuItem value="Dr Johnny">Dr Johnny</MenuItem>
-                    <MenuItem value="Dr Jane">Dr Jane</MenuItem>
-                    <MenuItem value="Dr Heisenberg">Dr Heisenberg</MenuItem>
-                    <MenuItem value="Dr Tuco Salamanca">
-                      Dr Tuco Salamanca
+                    <MenuItem value="">
+                      <em>Select Practitioner</em>
                     </MenuItem>
+                    {practitioners.map((practitioner) => (
+                      <MenuItem
+                        key={practitioner.user_id}
+                        value={practitioner.user_id.toString()}
+                      >
+                        {practitioner.first_name} {practitioner.last_name}
+                      </MenuItem>
+                    ))}
                   </CommonTextField>
                 )}
               />
@@ -234,40 +323,11 @@ const NewAppointmentStep2 = () => {
           <Grid size={12}>
             <Box my={2}>
               <Typography variant="bodyMediumExtraBold" color="grey.600">
-                Choose Day
-              </Typography>
-              <Controller
-                name="day"
-                control={control}
-                render={({ field }) => (
-                  <CommonTextField
-                    {...field}
-                    select
-                    defaultValue={"Monday"}
-                    fullWidth
-                    error={!!errors.day}
-                    helperText={errors.day?.message}
-                  >
-                    <MenuItem value="Monday">Monday</MenuItem>
-                    <MenuItem value="Tuesday">Tuesday</MenuItem>
-                    <MenuItem value="Wednesday">Wednesday</MenuItem>
-                    <MenuItem value="Thursday">Thursday</MenuItem>
-                    <MenuItem value="Friday">Friday</MenuItem>
-                    <MenuItem value="Saturday">Saturday</MenuItem>
-                    <MenuItem value="Sunday">Sunday</MenuItem>
-                  </CommonTextField>
-                )}
-              />
-            </Box>
-          </Grid>
-          {/* <Grid size={12}>
-            <Box my={2}>
-              <Typography variant="bodyMediumExtraBold" color="grey.600">
-                Date
+                Select Date
               </Typography>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <Controller
-                  name="date"
+                  name="day"
                   control={control}
                   render={({ field }) => (
                     <DatePicker
@@ -277,25 +337,22 @@ const NewAppointmentStep2 = () => {
                         if (newValue) {
                           const dateObj = newValue.toDate();
                           field.onChange(dateObj);
-                          setValue("date", dateObj, { shouldValidate: true });
                         }
                       }}
+                      slots={{ openPickerIcon: calenderIcon }}
                       slotProps={{
-                        field: {
-                          //@ts-ignore
+                        textField: {
                           fullWidth: true,
+                          error: !!errors.day,
+                          helperText: errors.day?.message,
                         },
                       }}
-                      slots={{ openPickerIcon: calenderIcon }}
-                      label=""
                     />
                   )}
                 />
               </LocalizationProvider>
-              <FormHelperText error>{errors.date?.message}</FormHelperText>
             </Box>
-          </Grid> */}
-
+          </Grid>
           <Grid size={12}>
             <Box>
               <Typography variant="bodyMediumExtraBold" color="grey.600">
@@ -324,8 +381,8 @@ const NewAppointmentStep2 = () => {
                         {timeSlot.type === "phoneCall"
                           ? "(Phone only)"
                           : timeSlot.type === "inPerson"
-                          ? "(In-person only)"
-                          : ""}
+                            ? "(In-person only)"
+                            : ""}
                       </MenuItem>
                     ))}
                   </CommonTextField>

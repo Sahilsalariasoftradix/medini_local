@@ -1,5 +1,7 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { z } from "zod";
+import { getCompanyDetails } from "../api/userApi";
+import { ICompanyData, ICompanyUsers } from "../utils/Interfaces";
 
 // Define the shape of the context data
 interface AppointmentCheckerContextType {
@@ -30,6 +32,9 @@ interface AppointmentCheckerContextType {
   }) => void;
   existingPhone: string;
   setExistingPhone: (phone: string) => void;
+  companyDetails: ICompanyData[];
+  practitioners: ICompanyUsers[];
+  setPractitioners: (practitioners: ICompanyUsers[]) => void;
 }
 export const EditAppointmentSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -112,6 +117,9 @@ export const AppointmentCheckerProvider = ({
   const [phone, setPhone] = useState<string>("");
   const [existingPhone, setExistingPhone] = useState<string>("");
   const [hasAppointment, setHasAppointment] = useState<boolean | null>(null);
+  const [companyDetails, setCompanyDetails] = useState<ICompanyData[]>([]);
+  const [practitioners, setPractitioners] = useState<ICompanyUsers[]>([]);
+
   const [existingAppointmentData, setExistingAppointmentData] =
     useState<ExistingAppointmentData | null>(null);
   const updateAppointmentData = (data: Partial<AppointmentData>) => {
@@ -131,6 +139,13 @@ export const AppointmentCheckerProvider = ({
     setFlowType(null);
     setHasAppointment(null);
   };
+  useEffect(() => {
+    (async () => {
+      const companyDetails = await getCompanyDetails();
+      setCompanyDetails(companyDetails?.companies);
+
+    })();
+  }, []);
   return (
     <AppointmentCheckerContext.Provider
       value={{
@@ -153,6 +168,9 @@ export const AppointmentCheckerProvider = ({
         setSnackbar,
         existingPhone,
         setExistingPhone,
+        companyDetails,
+        practitioners,
+        setPractitioners
       }}
     >
       {children}
