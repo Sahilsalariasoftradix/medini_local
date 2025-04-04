@@ -1,18 +1,12 @@
-//@ts-ignore
-import { Box, Typography, FormHelperText } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useAppointmentChecker } from "../../../store/AppointmentCheckerContext";
 import CommonButton from "../../common/CommonButton";
-//@ts-ignore
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import CommonTextField from "../../common/CommonTextField";
-// import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
-// import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-// import dayjs from "dayjs";
 import { useState } from "react";
-// import { calenderIcon } from "../../Booking/Form/SlotBookingForm";
 import StepProgress from "../StepProgress";
 import { EnStepProgress } from "../../../utils/enums";
 import { MuiPhone } from "../../Auth/SignUp/CustomPhoneInput";
@@ -53,7 +47,6 @@ const NewAppointmentStep1 = () => {
     register,
     handleSubmit,
     formState: { errors },
-    control,
   } = useForm<FormValues>({
     resolver: zodResolver(validationSchema),
     defaultValues: {
@@ -66,7 +59,7 @@ const NewAppointmentStep1 = () => {
   });
 
   const onSubmit = (data: FormValues) => {
-
+  
     if (!phone || phone.length < 12) {
       setSnackbar({
         open: true,
@@ -104,8 +97,8 @@ const NewAppointmentStep1 = () => {
       <Box component="form" sx={{ mt: 3 }} onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={2}>
           <Grid size={12}>
-            <Typography variant="bodyMediumExtraBold" color="grey.600">
-              First Name
+          <Typography variant="bodyMediumExtraBold" color="grey.600">
+             First Name
             </Typography>
             <CommonTextField
               // label="Full Name"
@@ -115,8 +108,8 @@ const NewAppointmentStep1 = () => {
             />
           </Grid>
           <Grid size={12}>
-            <Typography variant="bodyMediumExtraBold" color="grey.600">
-              Last Name
+          <Typography variant="bodyMediumExtraBold" color="grey.600">
+             Last Name
             </Typography>
             <CommonTextField
               placeholder="Last Name"
@@ -125,8 +118,8 @@ const NewAppointmentStep1 = () => {
             />
           </Grid>
           <Grid size={12}>
-            <Typography variant="bodyMediumExtraBold" color="grey.600">
-              Email
+          <Typography variant="bodyMediumExtraBold" color="grey.600">
+             Email
             </Typography>
             <CommonTextField
               placeholder="Email Address"
@@ -135,8 +128,8 @@ const NewAppointmentStep1 = () => {
             />
           </Grid>
           <Grid size={12}>
-            <Typography variant="bodyMediumExtraBold" color="grey.600">
-              Phone
+          <Typography variant="bodyMediumExtraBold" color="grey.600">
+             Phone
             </Typography>
             <MuiPhone
               value={phone}

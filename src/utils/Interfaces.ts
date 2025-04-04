@@ -197,7 +197,20 @@ export interface IContact {
   phone: string;
   user_id?: string;
 }
-
+export interface IAvailability {
+  day_of_week: string | null;
+  phone_start_time: string | null;
+  phone_end_time: string | null;
+  in_person_start_time: string | null;
+  in_person_end_time: string | null;
+  break_start_time: string | null;
+  break_end_time: string | null;
+}
+export interface IGetBookingFiltered {
+  start_time: string;
+  end_time: string;
+  booking_type: EnBookingType.IN_PERSON | EnBookingType.PHONE;
+}
 export interface IBooking {
   booking_id?: number;
   user_id: number;

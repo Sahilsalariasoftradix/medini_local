@@ -122,6 +122,7 @@ export enum EnStepProgress {
 export enum EnBookingType {
   IN_PERSON = "in-person",
   PHONE = "phone",
+  BOTH = "both",
 }
 export enum EnBookingDuration {
   DURATION_15 = "15",

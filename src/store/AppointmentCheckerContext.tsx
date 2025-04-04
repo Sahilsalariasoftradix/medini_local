@@ -35,6 +35,8 @@ interface AppointmentCheckerContextType {
   companyDetails: ICompanyData[];
   practitioners: ICompanyUsers[];
   setPractitioners: (practitioners: ICompanyUsers[]) => void;
+  setReferenceNumber: (referenceNumber: string) => void;
+  referenceNumber: string;
 }
 export const EditAppointmentSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -63,6 +65,7 @@ interface AppointmentData {
   clinicLocation: string;
   appointmentStatus?: "scheduled" | "confirmed" | "completed" | "cancelled";
   referenceNumber?: string;
+
 }
 
 const defaultAppointmentData: AppointmentData = {
@@ -78,6 +81,7 @@ const defaultAppointmentData: AppointmentData = {
   clinicLocation: "",
 };
 export interface NewAppointmentData {
+  details: string;
   appointment_location: string;
   day: string;
   businessName: string;
@@ -92,6 +96,7 @@ export interface NewAppointmentData {
   appointmentType: string;
   dateOfBirth: string;
   bypass_key: string;
+  referenceNumber: string;
 }
 export interface ExistingAppointmentData {
   phone: string;
@@ -119,7 +124,7 @@ export const AppointmentCheckerProvider = ({
   const [hasAppointment, setHasAppointment] = useState<boolean | null>(null);
   const [companyDetails, setCompanyDetails] = useState<ICompanyData[]>([]);
   const [practitioners, setPractitioners] = useState<ICompanyUsers[]>([]);
-
+  const [referenceNumber, setReferenceNumber] = useState<string>("");
   const [existingAppointmentData, setExistingAppointmentData] =
     useState<ExistingAppointmentData | null>(null);
   const updateAppointmentData = (data: Partial<AppointmentData>) => {
@@ -170,7 +175,9 @@ export const AppointmentCheckerProvider = ({
         setExistingPhone,
         companyDetails,
         practitioners,
-        setPractitioners
+        setPractitioners,
+        setReferenceNumber,
+        referenceNumber
       }}
     >
       {children}
