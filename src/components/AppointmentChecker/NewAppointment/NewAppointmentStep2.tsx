@@ -17,6 +17,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { Dayjs } from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import { useEffect, useState } from "react";
 import { calenderIcon } from "../../Booking/Form/SlotBookingForm";
 import { getAvailability, getBookings } from "../../../api/userApi";
@@ -26,6 +27,8 @@ import {
   IGetBookingFiltered,
   TGetBooking,
 } from "../../../utils/Interfaces";
+
+dayjs.extend(isSameOrAfter);
 
 // Define validation schema with zod
 const validationSchema = z.object({
@@ -228,8 +231,10 @@ const NewAppointmentStep2 = () => {
         const bookingStart = dayjs(
           `2000-01-01 ${booking.start_time.slice(0, 5)}`
         );
-        // const bookingEnd = dayjs(`2000-01-01 ${booking.end_time.slice(0, 5)}`);
-
+        const bookingEnd = dayjs(`2000-01-01 ${booking.end_time.slice(0, 5)}`);
+        // Check if the slot falls within the booking timeframe
+        const slotOverlapsBooking =
+          slotTime.isSameOrAfter(bookingStart) && slotTime.isBefore(bookingEnd);
         // If the slot is at the same time as any booking, it's not available
         if (slotTime.isSame(bookingStart)) {
           return true;
@@ -240,8 +245,8 @@ const NewAppointmentStep2 = () => {
           slot.type === EnBookingType.PHONE ||
           slot.type === EnBookingType.BOTH
         ) {
-          if (booking.booking_type === "phone") {
-            return slotTime.isSame(bookingStart);
+          if (booking.booking_type === EnBookingType.PHONE) {
+            return slotOverlapsBooking;
           }
         }
 
@@ -251,7 +256,7 @@ const NewAppointmentStep2 = () => {
           slot.type === EnBookingType.BOTH
         ) {
           if (booking.booking_type === EnBookingType.IN_PERSON) {
-            return slotTime.isSame(bookingStart);
+            return slotOverlapsBooking;
           }
         }
 
@@ -319,7 +324,6 @@ const NewAppointmentStep2 = () => {
   }, [selectedDate, watch("practitioner")]);
   // console.log(availability, "avb");
   // console.log(bookings, "bookings");
-  console.log(watch("businessName"));
 
   return (
     <Box>

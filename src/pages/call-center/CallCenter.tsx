@@ -25,7 +25,6 @@ import CommonTextField from "../../components/common/CommonTextField";
 import searchIcon from "../../assets/icons/Search.svg";
 import CommonButton from "../../components/common/CommonButton";
 import add from "../../assets/icons/add-icn.svg";
-import filter from "../../assets/icons/Filter.svg";
 import { useEffect, useMemo, useState } from "react";
 import { RoundCheckbox } from "../../components/common/RoundCheckbox";
 import {
@@ -666,7 +665,9 @@ const CallCenter = () => {
           call.scheduled_time ? call.scheduled_time : call.time
         ).format("DD/MM/YYYY"),
         status: status,
-        length: call.duration ? call.duration + " mins" : "--",
+        length: call.payload?.appointment_length
+          ? call.payload.appointment_length + " mins"
+          : "--",
         details: call.payload?.call_reason ? call.payload.call_reason : "--",
       };
     });
@@ -679,7 +680,7 @@ const CallCenter = () => {
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
     );
   }, [order, orderBy, page, rowsPerPage, getCallHistory]);
-  console.log(selectedContact);
+  // console.log(selectedContact);
 
   useEffect(() => {
     (async () => {
@@ -699,8 +700,6 @@ const CallCenter = () => {
       }
     })();
   }, [selectedContact]);
-
-  console.log(getBookingByUser);
 
   useEffect(() => {
     (async () => {
@@ -739,6 +738,7 @@ const CallCenter = () => {
       };
 
       // Pre-fill the form with existing data
+
       reset({
         contact: {
           title: `${contactInfo.firstName} ${contactInfo.lastName}`,
@@ -749,9 +749,18 @@ const CallCenter = () => {
         },
         callPurpose: callToEdit.call_purpose || "",
         //@ts-ignore
-        appointmentReason: callToEdit.call_reason || "",
+        appointmentReason: callToEdit.payload?.call_reason || "",
         scheduledCallTime:
           callToEdit.scheduled_time || dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        appointmentLength: callToEdit.payload?.appointment_length
+          ? callToEdit.payload.appointment_length.toString()
+          : "",
+        bookingStartDate: callToEdit.payload?.book_from_date || "",
+        bookingEndDate: callToEdit.payload?.book_till_date || "",
+        inPersonOnly: callToEdit.payload?.is_in_person || false,
+        appointmentId: callToEdit.payload?.appointment_id
+          ? callToEdit.payload.appointment_id.toString()
+          : "",
 
         // Pre-fill other fields as needed
       });
@@ -918,6 +927,24 @@ const CallCenter = () => {
     }
   };
 
+  const handleOpenNewCall = () => {
+    setOpenAddCallDetails(true);
+    setSelectedContact(null);
+    setCurrentEditingCall(null); // Ensure we reset the editing state
+    // Reset the form with default values
+    reset({
+      contact: {},
+      callPurpose: "",
+      appointmentReason: "",
+      appointmentId: getBookingByUser?.bookings?.[0]?.booking_id?.toString() || "",
+      inPersonOnly: false,
+      bookingStartDate: "",
+      bookingEndDate: "",
+      appointmentLength: "15",
+      scheduledCallTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
+    });
+  };
+
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -1005,18 +1032,15 @@ const CallCenter = () => {
             variant="contained"
             startIcon={<img src={add} alt="add" />}
             text="Add New Call"
-            onClick={() => {
-              setOpenAddCallDetails(true);
-              setSelectedContact(null);
-            }}
+            onClick={handleOpenNewCall}
             sx={{ py: "11px", px: "20px" }}
           />
-          <CommonButton
+          {/* <CommonButton
             variant="outlined"
             startIcon={<img src={filter} alt="filter" />}
             text="Filters"
             sx={{ py: "11px", px: "20px" }}
-          />
+          /> */}
         </Box>
       </Box>
       <Box sx={{ width: "100%" }} mt={3}>

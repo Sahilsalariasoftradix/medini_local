@@ -357,6 +357,12 @@ export interface ICallHistory {
   call_failed?: boolean;
   payload: {
     call_reason: string;
+    appointment_length: number;
+    appointment_reason: string;
+    book_from_date: string;
+    book_till_date: string;
+    is_in_person: boolean;
+    appointment_id: number;
   } | null;
 }
 export interface ICompanyUsers {
