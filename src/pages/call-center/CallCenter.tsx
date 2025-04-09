@@ -473,7 +473,7 @@ const CallCenter = () => {
     EnGetCallHistory.PENDING
   );
   const [searchCalls, setSearchCalls] = useState("");
-  const debouncedSearchValue = useDebounce(searchCalls, 300);
+  const debouncedSearchValue = useDebounce(searchCalls, 800);
 
   const {
     control,
