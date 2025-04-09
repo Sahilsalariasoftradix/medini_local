@@ -47,7 +47,6 @@ import {
   IFilm,
   IGetBookingsByUser,
   IGetContacts,
-  Order,
 } from "../../utils/Interfaces";
 import { getContactsByUserId } from "../../firebase/AuthService";
 import { Controller, useForm } from "react-hook-form";
@@ -86,15 +85,8 @@ import { EnShowPurposeUI } from "../../utils/enums";
 import { CircularProgress } from "@mui/material";
 import useDebounce from "../../hooks/useDebounce";
 
-function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
-  }
-  return 0;
-}
+// Add these type definitions and sorting functions
+type Order = "asc" | "desc";
 
 function getComparator<Key extends keyof any>(
   order: Order,
@@ -106,6 +98,16 @@ function getComparator<Key extends keyof any>(
   return order === "desc"
     ? (a, b) => descendingComparator(a, b, orderBy)
     : (a, b) => -descendingComparator(a, b, orderBy);
+}
+
+function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
+  if (b[orderBy] < a[orderBy]) {
+    return -1;
+  }
+  if (b[orderBy] > a[orderBy]) {
+    return 1;
+  }
+  return 0;
 }
 
 function EnhancedTableHead(props: EnhancedTableProps) {
@@ -443,7 +445,7 @@ type AddCallSchema = z.infer<typeof addCallSchema>;
 
 const CallCenter = () => {
   const [order, setOrder] = useState<Order>("asc");
-  const [orderBy, setOrderBy] = useState<keyof Data>("contact");
+  const [orderBy, setOrderBy] = useState<string>("date");
   const [selected, setSelected] = useState<readonly number[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -534,20 +536,45 @@ const CallCenter = () => {
     fetchContacts();
     fetchCompanyPhone();
   }, []);
+
+  const [paginationInfo, setPaginationInfo] = useState({
+    total: 0,
+    limit: 10,
+    offset: 0,
+    hasMore: false,
+  });
+
   const refreshCallHistory = async () => {
     setTableLoading(true);
     try {
-      const callHistory = await getCallHistoryData(
+      const response = await getCallHistoryData(
         userDetails?.user_id,
-        callHistoryStatus ? callHistoryStatus : ""
+        callHistoryStatus ? callHistoryStatus : "",
+        page * rowsPerPage,
+        rowsPerPage,
+        debouncedSearchValue
       );
-      setGetCallHistory(callHistory);
+      setGetCallHistory(response.data || []);
+      setPaginationInfo(
+        response.pagination || {
+          total: 0,
+          limit: rowsPerPage,
+          offset: 0,
+          hasMore: false,
+        }
+      );
     } catch (error) {
       console.error("Error fetching call history:", error);
+      setGetCallHistory([]);
     } finally {
       setTableLoading(false);
     }
   };
+
+  useEffect(() => {
+    refreshCallHistory();
+  }, [callHistoryStatus, page, rowsPerPage]);
+
   useEffect(() => {
     // Get the current contact value from the form
     const currentValue = control._formValues?.contact;
@@ -557,6 +584,7 @@ const CallCenter = () => {
       setSelectedContact(null);
     }
   }, [control._formValues?.contact]);
+
   const handleOpen = () => {
     setOpenContactSearch(true);
     (async () => {
@@ -568,12 +596,12 @@ const CallCenter = () => {
     })();
   };
   // Add this calculation for total pages
-  const totalPages = Math.ceil(getCallHistory.length / rowsPerPage);
+  const totalPages = Math.ceil(paginationInfo.total / rowsPerPage);
 
   const handleRequestSort = (
     //@ts-ignore
     event: React.MouseEvent<unknown>,
-    property: keyof Data
+    property: string
   ) => {
     const isAsc = orderBy === property && order === "asc";
     setOrder(isAsc ? "desc" : "asc");
@@ -616,26 +644,20 @@ const CallCenter = () => {
     // For TablePagination, pages start from 0
     const adjustedPage = event?.type === "click" ? newPage - 1 : newPage;
     setPage(adjustedPage);
+    // No need to call refreshCallHistory here as it will be triggered by the useEffect
   };
 
   const handleChangeRowsPerPage = (event: SelectChangeEvent<number>) => {
-    setRowsPerPage(parseInt(event.target.value.toString(), 10));
-    setPage(0);
+    const newRowsPerPage = parseInt(event.target.value.toString(), 10);
+    setRowsPerPage(newRowsPerPage);
+    setPage(0); // Reset to first page when changing rows per page
+    // No need to call refreshCallHistory here as it will be triggered by the useEffect
   };
 
-  // Avoid a layout jump when reaching the last page with empty rows.
-  const emptyRows =
-    page > 0
-      ? Math.max(0, (1 + page) * rowsPerPage - getCallHistory.length)
-      : 0;
-
   const visibleRows = useMemo(() => {
-    //@ts-ignore
-    const formattedRows = getCallHistory.map((call, index) => {
+    // First create the row objects
+    const rows = getCallHistory.map((call) => {
       let status;
-      // if (call.call_failed) {
-      //   status = EnShowPurposeUI.FAILED;
-      // } else
       {
         switch (call.call_purpose) {
           case "BOOK":
@@ -672,14 +694,10 @@ const CallCenter = () => {
       };
     });
 
-    return (
-      formattedRows
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        .sort(getComparator(order, orderBy))
-        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-    );
-  }, [order, orderBy, page, rowsPerPage, getCallHistory]);
+    // Then sort the rows
+    //@ts-ignore
+    return [...rows].sort(getComparator(order, orderBy));
+  }, [getCallHistory, order, orderBy]);
   // console.log(selectedContact);
 
   useEffect(() => {
@@ -700,23 +718,6 @@ const CallCenter = () => {
       }
     })();
   }, [selectedContact]);
-
-  useEffect(() => {
-    (async () => {
-      setTableLoading(true);
-      try {
-        const callHistory = await getCallHistoryData(
-          userDetails?.user_id,
-          callHistoryStatus ? callHistoryStatus : ""
-        );
-        setGetCallHistory(callHistory);
-      } catch (error) {
-        console.error("Error fetching call history:", error);
-      } finally {
-        setTableLoading(false);
-      }
-    })();
-  }, [callHistoryStatus]);
 
   // Add a function to handle editing a call
   const handleEditCall = (callData: Data) => {
@@ -980,6 +981,12 @@ const CallCenter = () => {
     severity: "error",
   });
 
+  useEffect(() => {
+    // When search value changes, reset to first page and reload data
+    setPage(0);
+    refreshCallHistory();
+  }, [debouncedSearchValue]);
+
   return (
     <Box sx={{ px: "12px" }}>
       <Box
@@ -991,7 +998,7 @@ const CallCenter = () => {
           <CommonTextField
             startIcon={<img src={searchIcon} alt="down" />}
             placeholder="Search Calls"
-            value={debouncedSearchValue}
+            value={searchCalls}
             onChange={(e) => setSearchCalls(e.target.value)}
             sx={{ maxWidth: "300px", "& .MuiInputBase-input": { py: "11px" } }}
           />
@@ -1195,12 +1202,6 @@ const CallCenter = () => {
                           </TableRow>
                         );
                       })}
-
-                      {emptyRows > 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} />
-                        </TableRow>
-                      )}
                     </TableBody>
                   ) : (
                     <>
