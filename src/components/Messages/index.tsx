@@ -60,10 +60,9 @@ const messageAreaStyles = {
 const Messages = () => {
   const [message, setMessage] = useState("");
   const [searchValue, setSearchValue] = useState<string>("");
-    //@ts-ignore
+  //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
   const { socketData, socket } = useAuth();
- 
 
   const handleSend = () => {
     if (message.trim() && socket && socket.readyState === WebSocket.OPEN) {
@@ -101,58 +100,76 @@ const Messages = () => {
         </Box>
 
         {/* Contact list items */}
-        <Box
-          sx={{
-            display: "flex",
-            p: 2,
-            borderBottom: "1px solid #f5f5f5",
-            cursor: "pointer",
-            "&:hover": {
-              bgcolor: "rgba(0, 0, 0, 0.04)",
-            },
-            // Highlight active chat - can be controlled with state
-          }}
-        >
-          <Avatar sx={{ width: 40, height: 40 }}>
-            {socketData?.first_name.charAt(0)} {socketData?.last_name.charAt(0)}
-          </Avatar>
-          <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography variant="bodyLargeExtraBold" noWrap>
-                {socketData?.first_name} {socketData?.last_name}
-              </Typography>
-              <Typography variant="bodyMediumMedium">
-                {socketData?.start_time}
-              </Typography>
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              {/* <Typography
-                variant="bodyMediumMedium"
-                noWrap
+        {socketData ? (
+          <Box
+            sx={{
+              display: "flex",
+              p: 2,
+              borderBottom: "1px solid #f5f5f5",
+              cursor: "pointer",
+              "&:hover": {
+                bgcolor: "rgba(0, 0, 0, 0.04)",
+              },
+              // Highlight active chat - can be controlled with state
+            }}
+          >
+            <Avatar sx={{ width: 40, height: 40 }}>
+              {socketData?.first_name.charAt(0)}{" "}
+              {socketData?.last_name.charAt(0)}
+            </Avatar>
+            <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
+              <Box
                 sx={{
-                  maxWidth: "150px",
-                  ...(contact.unreadCount > 0
-                    ? { fontWeight: 500, color: "text.primary" }
-                    : {}),
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                {contact.lastMessage}
-              </Typography> */}
+                <Typography variant="bodyLargeExtraBold" noWrap>
+                  {socketData?.first_name} {socketData?.last_name}
+                </Typography>
+                <Typography variant="bodyMediumMedium">
+                  {socketData?.start_time}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                {/* <Typography
+       variant="bodyMediumMedium"
+       noWrap
+       sx={{
+         maxWidth: "150px",
+         ...(contact.unreadCount > 0
+           ? { fontWeight: 500, color: "text.primary" }
+           : {}),
+       }}
+     >
+       {contact.lastMessage}
+     </Typography> */}
+              </Box>
             </Box>
           </Box>
-        </Box>
+        ) : (
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Typography variant="bodyLargeExtraBold">
+              No messages yet
+            </Typography>
+          </Box>
+        )}
+
         {/* <Box>
           {mockContacts
             .filter((contact) =>
@@ -242,146 +259,163 @@ const Messages = () => {
       </Box>
 
       {/* Right side - chat area */}
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-        {/* Chat header */}
-        <Box
-          sx={{
-            px: 4,
-            py: 3,
-            borderBottom: "1px solid #E2E8F0",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>
-            {socketData?.first_name.charAt(0)} {socketData?.last_name.charAt(0)}
-          </Avatar>
-          <Typography variant="subtitle1" fontWeight="bold">
-            {socketData?.first_name} {socketData?.last_name}
-          </Typography>
-        </Box>
-
-        {/* Messages area */}
-        <Box sx={messageAreaStyles}>
+      {socketData ? (
+        <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+          {/* Chat header */}
           <Box
             sx={{
+              px: 4,
+              py: 3,
+              borderBottom: "1px solid #E2E8F0",
               display: "flex",
-              flexDirection: "column",
-
-              alignItems: socketData?.isUser ? "flex-end" : "flex-start",
-              mb: 2,
+              alignItems: "center",
             }}
           >
+            <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>
+              {socketData?.first_name.charAt(0)}{" "}
+              {socketData?.last_name.charAt(0)}
+            </Avatar>
+            <Typography variant="subtitle1" fontWeight="bold">
+              {socketData?.first_name} {socketData?.last_name}
+            </Typography>
+          </Box>
+
+          {/* Messages area */}
+          <Box sx={messageAreaStyles}>
             <Box
               sx={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: socketData?.isUser ? "flex-end" : "flex-start",
+                flexDirection: "column",
+
+                alignItems: socketData?.isUser ? "flex-end" : "flex-start",
+                mb: 2,
               }}
             >
-              {/* {!msg.isUser && (
-                  <Avatar
-                    sx={{ width: 32, height: 32, mr: 1, bgcolor: "#9c27b0" }}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: socketData?.isUser
+                    ? "flex-end"
+                    : "flex-start",
+                }}
+              >
+                {/* {!msg.isUser && (
+                <Avatar
+                  sx={{ width: 32, height: 32, mr: 1, bgcolor: "#9c27b0" }}
+                >
+                  {msg.sender.charAt(0)}
+                </Avatar>
+              )} */}
+                {socketData?.isUser && (
+                  <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                    <img src={share} alt="share" />
+                  </IconButton>
+                )}
+                {socketData && (
+                  <Box
+                    sx={{
+                      maxWidth: "70%",
+                      p: 1.5,
+                      borderRadius: "16px",
+                      borderBottomRightRadius: 0,
+                      bgcolor: socketData?.isUser ? "primary.main" : "grey.100",
+                      color: socketData?.isUser ? "white" : "inherit",
+                    }}
                   >
-                    {msg.sender.charAt(0)}
-                  </Avatar>
-                )} */}
-              {socketData?.isUser && (
-                <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                  <img src={share} alt="share" />
-                </IconButton>
-              )}
-              {socketData && (
-                <Box
-                  sx={{
-                    maxWidth: "70%",
-                    p: 1.5,
-                    borderRadius: "16px",
-                    borderBottomRightRadius: 0,
-                    bgcolor: socketData?.isUser ? "primary.main" : "grey.100",
-                    color: socketData?.isUser ? "white" : "inherit",
-                  }}
-                >
-                  <Typography variant="body1">
-                    New booking from {socketData?.first_name}{" "}
-                    {socketData?.last_name} on {socketData?.date}
+                    <Typography variant="body1">
+                      New booking from {socketData?.first_name}{" "}
+                      {socketData?.last_name} on {socketData?.date}
+                    </Typography>
+                  </Box>
+                )}
+
+                {!socketData?.isUser && (
+                  <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                    <img src={share} alt="share" />
+                  </IconButton>
+                )}
+              </Box>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+
+                  mt: 0.5,
+                  ml: socketData?.isUser ? 0 : 0,
+                }}
+              >
+                {!socketData?.isUser && (
+                  <Typography
+                    variant="bodySmallExtraBold"
+                    sx={{ mx: 1, mb: 0.5 }}
+                  >
+                    {socketData?.sender}
                   </Typography>
-                </Box>
-              )}
+                )}
 
-              {!socketData?.isUser && (
-                <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                  <img src={share} alt="share" />
-                </IconButton>
-              )}
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-
-                mt: 0.5,
-                ml: socketData?.isUser ? 0 : 0,
-              }}
-            >
-              {!socketData?.isUser && (
-                <Typography
-                  variant="bodySmallExtraBold"
-                  sx={{ mx: 1, mb: 0.5 }}
-                >
-                  {socketData?.sender}
+                <Typography variant="bodySmallMedium" color="grey.500">
+                  {socketData?.timestamp}{" "}
                 </Typography>
-              )}
-
-              <Typography variant="bodySmallMedium" color="grey.500">
-                {socketData?.timestamp}{" "}
-              </Typography>
-              <Typography variant="bodySmallExtraBold" ml={1}>
-                {socketData?.isUser && "You"}
-              </Typography>
+                <Typography variant="bodySmallExtraBold" ml={1}>
+                  {socketData?.isUser && "You"}
+                </Typography>
+              </Box>
             </Box>
           </Box>
-        </Box>
 
-        {/* Message input area */}
-        <Box sx={{ px: 6 }}>
-          <CommonTextField
-            placeholder="Type a message..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSend()}
-          />
+          {/* Message input area */}
+          <Box sx={{ px: 6 }}>
+            <CommonTextField
+              placeholder="Type a message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSend()}
+            />
+          </Box>
+          <Box
+            sx={{
+              py: 2,
+              px: 5,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Box>
+              <IconButton>
+                <img src={photo} alt="photo" />
+              </IconButton>
+              <IconButton>
+                <img src={file} alt="file" />
+              </IconButton>
+              <IconButton>
+                <img src={emojiIcon} alt="emoji" />
+              </IconButton>
+            </Box>
+
+            <CommonButton
+              text="Send"
+              onClick={handleSend}
+              disabled={!message.trim()}
+              sx={{ width: "150px" }}
+            />
+          </Box>
         </Box>
+      ) : (
         <Box
           sx={{
-            py: 2,
-            px: 5,
+            flexGrow: 1,
             display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
             alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
-          <Box>
-            <IconButton>
-              <img src={photo} alt="photo" />
-            </IconButton>
-            <IconButton>
-              <img src={file} alt="file" />
-            </IconButton>
-            <IconButton>
-              <img src={emojiIcon} alt="emoji" />
-            </IconButton>
-          </Box>
-
-          <CommonButton
-            text="Send"
-            onClick={handleSend}
-            disabled={!message.trim()}
-            sx={{ width: "150px" }}
-          />
+          <Typography variant="bodyLargeExtraBold">No messages yet</Typography>
         </Box>
-      </Box>
+      )}
     </Box>
   );
 };
