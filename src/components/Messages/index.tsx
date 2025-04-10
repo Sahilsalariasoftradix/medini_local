@@ -1,6 +1,6 @@
 import { Avatar, Box, Typography, IconButton } from "@mui/material";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CommonButton from "../common/CommonButton";
 import emojiIcon from "../../assets/icons/mood-smile.svg";
 import file from "../../assets/icons/link.svg";
@@ -9,7 +9,7 @@ import share from "../../assets/icons/share.svg";
 import search from "../../assets/icons/Search.svg";
 import CommonTextField from "../common/CommonTextField";
 import useDebounce from "../../hooks/useDebounce";
-import { mockContacts, mockMessages } from "../../utils/common";
+import { useAuth } from "../../store/AuthContext";
 const sidebarStyles = {
   width: 350,
   borderRight: "1px solid #E2E8F0",
@@ -60,10 +60,85 @@ const messageAreaStyles = {
 const Messages = () => {
   const [message, setMessage] = useState("");
   const [searchValue, setSearchValue] = useState<string>("");
+    //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
+  const { userDetails } = useAuth();
+  const [socketData, setSocketData] = useState<any>(null);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  //@ts-ignore
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("disconnected");
+
+  // Setup WebSocket connection
+  useEffect(() => {
+    // Create WebSocket connection
+    const ws = new WebSocket(import.meta.env.VITE_MEDINI_WEBSOCKET_URL);
+    setSocket(ws);
+    setConnectionStatus("connecting");
+
+    // Connection opened
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      setConnectionStatus("connected");
+
+      // Send user ID when connection is established
+      if (userDetails?.user_id) {
+        const payload = {
+          user_id: userDetails.user_id,
+        };
+        ws.send(JSON.stringify(payload));
+      }
+    };
+
+    // Listen for messages
+    ws.onmessage = (event) => {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Message from server:", data);
+          setSocketData(data?.payload);
+        } catch (error) {
+          console.log("Received non-JSON message:", event.data);
+          // Handle non-JSON messages if needed
+        }
+      }
+    };
+
+    // Handle errors
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setConnectionStatus("disconnected");
+    };
+
+    // Handle connection closing
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+      setConnectionStatus("disconnected");
+    };
+
+    //* Cleanup function to close socket when component unmounts
+    return () => {
+      if (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      ) {
+        ws.close();
+      }
+    };
+  }, [userDetails?.user_id]); // Reconnect if user ID changes
 
   const handleSend = () => {
-    if (message.trim()) {
+    if (message.trim() && socket && socket.readyState === WebSocket.OPEN) {
+      // Create message payload
+      const messagePayload = {
+        type: "message",
+        content: message,
+        // Add any other required fields
+      };
+
+      // Send the message
+      socket.send(JSON.stringify(messagePayload));
       console.log("Sending message:", message);
       setMessage("");
     }
@@ -89,7 +164,59 @@ const Messages = () => {
         </Box>
 
         {/* Contact list items */}
-        <Box>
+        <Box
+          sx={{
+            display: "flex",
+            p: 2,
+            borderBottom: "1px solid #f5f5f5",
+            cursor: "pointer",
+            "&:hover": {
+              bgcolor: "rgba(0, 0, 0, 0.04)",
+            },
+            // Highlight active chat - can be controlled with state
+          }}
+        >
+          <Avatar sx={{ width: 40, height: 40 }}>
+            {socketData?.first_name.charAt(0)} {socketData?.last_name.charAt(0)}
+          </Avatar>
+          <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="bodyLargeExtraBold" noWrap>
+                {socketData?.first_name} {socketData?.last_name}
+              </Typography>
+              <Typography variant="bodyMediumMedium">
+                {socketData?.start_time}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              {/* <Typography
+                variant="bodyMediumMedium"
+                noWrap
+                sx={{
+                  maxWidth: "150px",
+                  ...(contact.unreadCount > 0
+                    ? { fontWeight: 500, color: "text.primary" }
+                    : {}),
+                }}
+              >
+                {contact.lastMessage}
+              </Typography> */}
+            </Box>
+          </Box>
+        </Box>
+        {/* <Box>
           {mockContacts
             .filter((contact) =>
               contact.name
@@ -174,7 +301,7 @@ const Messages = () => {
                 </Box>
               </Box>
             ))}
-        </Box>
+        </Box> */}
       </Box>
 
       {/* Right side - chat area */}
@@ -189,111 +316,95 @@ const Messages = () => {
             alignItems: "center",
           }}
         >
-          <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>SC</Avatar>
+          <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>
+            {socketData?.first_name.charAt(0)} {socketData?.last_name.charAt(0)}
+          </Avatar>
           <Typography variant="subtitle1" fontWeight="bold">
-            Spencer Connelly
+            {socketData?.first_name} {socketData?.last_name}
           </Typography>
         </Box>
 
         {/* Messages area */}
         <Box sx={messageAreaStyles}>
-          {mockMessages.map((msg) => (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+
+              alignItems: socketData?.isUser ? "flex-end" : "flex-start",
+              mb: 2,
+            }}
+          >
             <Box
-              key={msg.id}
               sx={{
                 display: "flex",
-                flexDirection: "column",
-
-                alignItems: msg.isUser ? "flex-end" : "flex-start",
-                mb: 2,
+                alignItems: "center",
+                justifyContent: socketData?.isUser ? "flex-end" : "flex-start",
               }}
             >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: msg.isUser ? "flex-end" : "flex-start",
-                }}
-              >
-                {/* {!msg.isUser && (
+              {/* {!msg.isUser && (
                   <Avatar
                     sx={{ width: 32, height: 32, mr: 1, bgcolor: "#9c27b0" }}
                   >
                     {msg.sender.charAt(0)}
                   </Avatar>
                 )} */}
-                {msg.isUser && (
-                  <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                    <img src={share} alt="share" />
-                  </IconButton>
-                )}
+              {socketData?.isUser && (
+                <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                  <img src={share} alt="share" />
+                </IconButton>
+              )}
+              {socketData && (
                 <Box
                   sx={{
                     maxWidth: "70%",
                     p: 1.5,
                     borderRadius: "16px",
                     borderBottomRightRadius: 0,
-                    bgcolor: msg.isUser ? "primary.main" : "grey.100",
-                    color: msg.isUser ? "white" : "inherit",
+                    bgcolor: socketData?.isUser ? "primary.main" : "grey.100",
+                    color: socketData?.isUser ? "white" : "inherit",
                   }}
                 >
-                  <Typography variant="body1">{msg.content}</Typography>
-                </Box>
-
-                {!msg.isUser && (
-                  <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                    <img src={share} alt="share" />
-                  </IconButton>
-                )}
-              </Box>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-
-                  mt: 0.5,
-                  ml: msg.isUser ? 0 : 0,
-                }}
-              >
-                {!msg.isUser && (
-                  <Typography
-                    variant="bodySmallExtraBold"
-                    sx={{ mx: 1, mb: 0.5 }}
-                  >
-                    {msg.sender}
+                  <Typography variant="body1">
+                    New booking from {socketData?.first_name}{" "}
+                    {socketData?.last_name} on {socketData?.date}
                   </Typography>
-                )}
-                {msg.reactions.length > 0 && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      mr: 1,
-                      p: 0.5,
-                      borderRadius: "50px",
-                      bgcolor: "grey.100",
-                      border: "1px solid #936DFF",
-                      minWidth: "50px",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    {msg.reactions.map((reaction, i) => (
-                      <Typography key={i} variant="body2" sx={{ mx: 0.25 }}>
-                        {reaction}
-                      </Typography>
-                    ))}
-                  </Box>
-                )}
-                <Typography variant="bodySmallMedium" color="grey.500">
-                  {msg.timestamp}{" "}
-                </Typography>
-                <Typography variant="bodySmallExtraBold" ml={1}>
-                  {msg.isUser && "You"}
-                </Typography>
-              </Box>
+                </Box>
+              )}
+
+              {!socketData?.isUser && (
+                <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                  <img src={share} alt="share" />
+                </IconButton>
+              )}
             </Box>
-          ))}
+
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+
+                mt: 0.5,
+                ml: socketData?.isUser ? 0 : 0,
+              }}
+            >
+              {!socketData?.isUser && (
+                <Typography
+                  variant="bodySmallExtraBold"
+                  sx={{ mx: 1, mb: 0.5 }}
+                >
+                  {socketData?.sender}
+                </Typography>
+              )}
+
+              <Typography variant="bodySmallMedium" color="grey.500">
+                {socketData?.timestamp}{" "}
+              </Typography>
+              <Typography variant="bodySmallExtraBold" ml={1}>
+                {socketData?.isUser && "You"}
+              </Typography>
+            </Box>
+          </Box>
         </Box>
 
         {/* Message input area */}

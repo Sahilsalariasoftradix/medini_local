@@ -261,12 +261,13 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const bookings = await getBookings({
+      // const bookings = 
+      await getBookings({
         user_id: userDetails.user_id,
         date: dayjs().format("YYYY-MM-DD"),
         range: EnAvailability.WEEK,
       });
-      console.log(bookings)
+      // console.log(bookings)
     } catch (error) {
       console.error("Error fetching bookings:", error);
     }

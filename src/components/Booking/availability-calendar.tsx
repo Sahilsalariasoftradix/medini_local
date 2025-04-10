@@ -30,7 +30,7 @@ import CommonTextField from "../common/CommonTextField";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Dayjs } from "dayjs";
-import { topFilms } from "../../utils/staticText";
+// import { topFilms } from "../../utils/staticText";
 import CommonDialog from "../common/CommonDialog";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -293,10 +293,10 @@ const TimeSlot = ({
     setOpenContactSearch(true);
     (async () => {
       setLoading({ ...loading, input: true });
-      await sleep(1000); // For demo purposes.
+      await sleep(0); // For demo purposes.
       setLoading({ ...loading, input: false });
 
-      setOptions([...topFilms]);
+      // setOptions([...topFilms]);
     })();
   };
 
