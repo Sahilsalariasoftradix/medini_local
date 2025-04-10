@@ -1,6 +1,6 @@
 import { Avatar, Box, Typography, IconButton } from "@mui/material";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import CommonButton from "../common/CommonButton";
 import emojiIcon from "../../assets/icons/mood-smile.svg";
 import file from "../../assets/icons/link.svg";
@@ -62,71 +62,8 @@ const Messages = () => {
   const [searchValue, setSearchValue] = useState<string>("");
     //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
-  const { userDetails } = useAuth();
-  const [socketData, setSocketData] = useState<any>(null);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-  //@ts-ignore
-  const [connectionStatus, setConnectionStatus] = useState<
-    "connecting" | "connected" | "disconnected"
-  >("disconnected");
-
-  // Setup WebSocket connection
-  useEffect(() => {
-    // Create WebSocket connection
-    const ws = new WebSocket(import.meta.env.VITE_MEDINI_WEBSOCKET_URL);
-    setSocket(ws);
-    setConnectionStatus("connecting");
-
-    // Connection opened
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-      setConnectionStatus("connected");
-
-      // Send user ID when connection is established
-      if (userDetails?.user_id) {
-        const payload = {
-          user_id: userDetails.user_id,
-        };
-        ws.send(JSON.stringify(payload));
-      }
-    };
-
-    // Listen for messages
-    ws.onmessage = (event) => {
-      if (event.data) {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Message from server:", data);
-          setSocketData(data?.payload);
-        } catch (error) {
-          console.log("Received non-JSON message:", event.data);
-          // Handle non-JSON messages if needed
-        }
-      }
-    };
-
-    // Handle errors
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setConnectionStatus("disconnected");
-    };
-
-    // Handle connection closing
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-      setConnectionStatus("disconnected");
-    };
-
-    //* Cleanup function to close socket when component unmounts
-    return () => {
-      if (
-        ws.readyState === WebSocket.OPEN ||
-        ws.readyState === WebSocket.CONNECTING
-      ) {
-        ws.close();
-      }
-    };
-  }, [userDetails?.user_id]); // Reconnect if user ID changes
+  const { socketData, socket } = useAuth();
+ 
 
   const handleSend = () => {
     if (message.trim() && socket && socket.readyState === WebSocket.OPEN) {

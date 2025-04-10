@@ -10,6 +10,9 @@ interface IAuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   setUserDetails: any;
+  socketData: any;
+  socket: WebSocket | null;
+  connectionStatus: "connecting" | "connected" | "disconnected";
 }
 const AuthContext = createContext<IAuthContextType | undefined>(undefined);
 
@@ -19,6 +22,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(undefined);
+  const [socketData, setSocketData] = useState<any>(null);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  //@ts-ignore
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("disconnected");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
@@ -52,10 +61,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = async () => {
     await signOut(firebaseAuth);
   };
+ 
 
+  // Setup WebSocket connection
+  useEffect(() => {
+    // Create WebSocket connection
+    const ws = new WebSocket(import.meta.env.VITE_MEDINI_WEBSOCKET_URL);
+    setSocket(ws);
+    setConnectionStatus("connecting");
+
+    // Connection opened
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      setConnectionStatus("connected");
+
+      // Send user ID when connection is established
+      if (userDetails?.user_id) {
+        const payload = {
+          user_id: userDetails.user_id,
+        };
+        ws.send(JSON.stringify(payload));
+      }
+    };
+
+    // Listen for messages
+    ws.onmessage = (event) => {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Message from server:", data);
+          setSocketData(data?.payload);
+        } catch (error) {
+          console.log("Received non-JSON message:", event.data);
+          // Handle non-JSON messages if needed
+        }
+      }
+    };
+
+    // Handle errors
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setConnectionStatus("disconnected");
+    };
+
+    // Handle connection closing
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+      setConnectionStatus("disconnected");
+    };
+
+    //* Cleanup function to close socket when component unmounts
+    return () => {
+      if (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      ) {
+        ws.close();
+      }
+    };
+  }, [userDetails?.user_id]); // Reconnect if user ID changes
   return (
     <AuthContext.Provider
-      value={{ user, userDetails, loading, logout, setUserDetails }}
+      value={{ user, userDetails, loading, logout, setUserDetails, socketData, socket, connectionStatus }}
     >
       {children}
     </AuthContext.Provider>
