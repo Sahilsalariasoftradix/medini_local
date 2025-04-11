@@ -10,10 +10,9 @@ import CommonButton from "../../common/CommonButton";
 import { useAppointmentChecker } from "../../../store/AppointmentCheckerContext";
 
 import { MuiPhone } from "../../Auth/SignUp/CustomPhoneInput";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import CommonSnackbar from "../../common/CommonSnackbar";
 import {
-  getCustomerBookings,
   sendVerificationCode,
 } from "../../../api/userApi";
 
@@ -31,16 +30,13 @@ const ExistingAppointment = () => {
     startTimer,
     loadMoreCompanies,
     hasMoreCompanies,
-    isLoadingMoreCompanies,
-    setUserBookings,
-    // userBookings,
+    isLoadingMoreCompanies, 
   } = useAppointmentChecker();
   const {
     register,
     handleSubmit,
     formState: { errors },
     control,
-    watch,
   } = useForm<ExistingAppointmentSchemaType>({
     resolver: zodResolver(ExistingAppointmentSchema),
     defaultValues: existingAppointmentData || {},
@@ -49,13 +45,13 @@ const ExistingAppointment = () => {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (watch("appointment_location")?.id) {
-      getCustomerBookings(Number(watch("appointment_location")?.id), existingPhone).then((bookings) => {
-        setUserBookings(bookings);
-      });
-    }
-  }, [watch("appointment_location")]);
+  // useEffect(() => {
+  //   if (watch("appointment_location")?.id) {
+  //     getCustomerBookings(Number(watch("appointment_location")?.id), existingPhone).then((bookings) => {
+  //       setUserBookings(bookings);
+  //     });
+  //   }
+  // }, [watch("appointment_location")]);
 
 
   const onSubmit: SubmitHandler<ExistingAppointmentSchemaType> = async (

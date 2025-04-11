@@ -11,7 +11,7 @@ import CommonTextField from "../common/CommonTextField";
 import useDebounce from "../../hooks/useDebounce";
 import { useAuth } from "../../store/AuthContext";
 const sidebarStyles = {
-  width: 350,
+  minWidth: 350,
   borderRight: "1px solid #E2E8F0",
   overflow: "auto",
   display: { xs: "none", sm: "block" },
@@ -56,27 +56,97 @@ const messageAreaStyles = {
     scrollbarColor: "rgba(0,0,0,0.2) transparent",
   },
 };
+const stringToColor = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = "#";
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xff;
+    color += ("00" + value.toString(16)).slice(-2);
+  }
+  return color;
+};
 
 const Messages = () => {
-  const [message, setMessage] = useState("");
   const [searchValue, setSearchValue] = useState<string>("");
+  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [messageHistory, setMessageHistory] = useState<{
+    [contactId: string]: any[];
+  }>({});
+
   //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
-  const { socketData, socket } = useAuth();
-
+  const { socketData, socket, message, setMessage,userDetails } = useAuth();
+console.log(socketData)
   const handleSend = () => {
-    if (message.trim() && socket && socket.readyState === WebSocket.OPEN) {
+    if (
+      message.trim() &&
+      socket &&
+      socket.readyState === WebSocket.OPEN &&
+      selectedContact
+    ) {
       // Create message payload
       const messagePayload = {
         type: "message",
         content: message,
-        // Add any other required fields
+        recipient: selectedContact?.id,
+        name: selectedContact?.first_name,
       };
+
+      // Create a message object for the UI
+      const newMessage = {
+        id: Date.now().toString(),
+        content: message,
+        sender: "You",
+        isUser: true,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+
+      // Update message history
+      setMessageHistory((prev) => ({
+        ...prev,
+        [selectedContact.booking_id]: [
+          ...(prev[selectedContact.booking_id] || []),
+          newMessage,
+        ],
+      }));
 
       // Send the message
       socket.send(JSON.stringify(messagePayload));
       console.log("Sending message:", message);
       setMessage("");
+    }
+  };
+
+  const handleContactSelect = (contact: any) => {
+    setSelectedContact(contact);
+
+    // Check if there are no messages for this contact yet
+    if (
+      !messageHistory[contact.booking_id] ||
+      messageHistory[contact.booking_id].length === 0
+    ) {
+      // Add the initial booking message
+      const bookingMessage = {
+        id: Date.now().toString(),
+        content: "booked", // Special marker to trigger the custom formatting
+        sender: contact.first_name,
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+
+      setMessageHistory((prev) => ({
+        ...prev,
+        [contact.booking_id]: [bookingMessage],
+      }));
     }
   };
 
@@ -100,121 +170,62 @@ const Messages = () => {
         </Box>
 
         {/* Contact list items */}
-        {socketData ? (
-          <Box
-            sx={{
-              display: "flex",
-              p: 2,
-              borderBottom: "1px solid #f5f5f5",
-              cursor: "pointer",
-              "&:hover": {
-                bgcolor: "rgba(0, 0, 0, 0.04)",
-              },
-              // Highlight active chat - can be controlled with state
-            }}
-          >
-            <Avatar sx={{ width: 40, height: 40 }}>
-              {socketData?.first_name.charAt(0)}{" "}
-              {socketData?.last_name.charAt(0)}
-            </Avatar>
-            <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography variant="bodyLargeExtraBold" noWrap>
-                  {socketData?.first_name} {socketData?.last_name}
-                </Typography>
-                <Typography variant="bodyMediumMedium">
-                  {socketData?.start_time}
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                {/* <Typography
-       variant="bodyMediumMedium"
-       noWrap
-       sx={{
-         maxWidth: "150px",
-         ...(contact.unreadCount > 0
-           ? { fontWeight: 500, color: "text.primary" }
-           : {}),
-       }}
-     >
-       {contact.lastMessage}
-     </Typography> */}
-              </Box>
-            </Box>
-          </Box>
-        ) : (
-          <Box
-            sx={{
-              flexGrow: 1,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Typography variant="bodyLargeExtraBold">
-              No messages yet
-            </Typography>
-          </Box>
-        )}
-
-        {/* <Box>
-          {mockContacts
-            .filter((contact) =>
-              contact.name
-                .toLowerCase()
-                .includes(debouncedSearchValue.toLowerCase())
-            )
-            .map((contact) => (
-              <Box
-                key={contact.id}
-                sx={{
-                  display: "flex",
-                  p: 2,
-                  borderBottom: "1px solid #f5f5f5",
-                  cursor: "pointer",
-                  "&:hover": {
-                    bgcolor: "rgba(0, 0, 0, 0.04)",
-                  },
-                  // Highlight active chat - can be controlled with state
-                  ...(contact.id === 3
-                    ? { bgcolor: "rgba(0, 0, 0, 0.04)" }
-                    : {}),
-                }}
-              >
-                <Avatar
-                  sx={{ bgcolor: contact.avatarColor, width: 40, height: 40 }}
+        <Box>
+          {socketData &&
+            socketData.length > 0 &&
+            socketData
+              .filter((contact: any) =>
+                contact.first_name
+                  .toLowerCase()
+                  .includes(debouncedSearchValue.toLowerCase())
+              )
+              .map((contact: any) => (
+                <Box
+                  key={contact.booking_id}
+                  sx={{
+                    display: "flex",
+                    p: 2,
+                    borderBottom: "1px solid #f5f5f5",
+                    cursor: "pointer",
+                    "&:hover": {
+                      bgcolor: "rgba(0, 0, 0, 0.04)",
+                    },
+                    // Highlight active chat based on selected contact
+                    ...(selectedContact?.booking_id === contact.booking_id
+                      ? { bgcolor: "rgba(0, 0, 0, 0.04)" }
+                      : {}),
+                  }}
+                  onClick={() => handleContactSelect(contact)}
                 >
-                  {contact.name.charAt(0)}
-                </Avatar>
-                <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
-                  <Box
+                  <Avatar
                     sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      bgcolor: stringToColor(
+                        contact.first_name + contact.last_name
+                      ),
+                      width: 40,
+                      height: 40,
                     }}
                   >
-                    <Typography variant="bodyLargeExtraBold" noWrap>
-                      {contact.name}
-                    </Typography>
-                    <Typography variant="bodyMediumMedium">
-                      {contact.time}
-                    </Typography>
-                  </Box>
-                  <Box
+                    {contact.first_name.charAt(0)}
+                    {contact.last_name.charAt(0)}
+                  </Avatar>
+                  <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="bodyLargeExtraBold" noWrap>
+                        {contact.first_name}
+                        {contact.last_name}
+                      </Typography>
+                      <Typography variant="bodyMediumMedium">
+                        {contact.start_time}
+                      </Typography>
+                    </Box>
+                    {/* <Box
                     sx={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -251,15 +262,29 @@ const Messages = () => {
                         {contact.unreadCount}
                       </Box>
                     )}
+                  </Box> */}
                   </Box>
                 </Box>
-              </Box>
-            ))}
-        </Box> */}
+              ))}
+          {socketData && socketData.length === 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "calc(100vh - 320px)",
+              }}
+            >
+              <Typography variant="bodyLargeExtraBold">
+                No messages yet
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {/* Right side - chat area */}
-      {socketData ? (
+      {selectedContact ? (
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           {/* Chat header */}
           <Box
@@ -272,97 +297,114 @@ const Messages = () => {
             }}
           >
             <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>
-              {socketData?.first_name.charAt(0)}{" "}
-              {socketData?.last_name.charAt(0)}
+              {selectedContact.first_name.charAt(0)}{" "}
+              {selectedContact.last_name.charAt(0)}
             </Avatar>
             <Typography variant="subtitle1" fontWeight="bold">
-              {socketData?.first_name} {socketData?.last_name}
+              {selectedContact.first_name}
+              {selectedContact.last_name}
             </Typography>
           </Box>
 
           {/* Messages area */}
           <Box sx={messageAreaStyles}>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-
-                alignItems: socketData?.isUser ? "flex-end" : "flex-start",
-                mb: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: socketData?.isUser
-                    ? "flex-end"
-                    : "flex-start",
-                }}
-              >
-                {/* {!msg.isUser && (
-                <Avatar
-                  sx={{ width: 32, height: 32, mr: 1, bgcolor: "#9c27b0" }}
-                >
-                  {msg.sender.charAt(0)}
-                </Avatar>
-              )} */}
-                {socketData?.isUser && (
-                  <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                    <img src={share} alt="share" />
-                  </IconButton>
-                )}
-                {socketData && (
+            {selectedContact &&
+              (messageHistory[selectedContact.booking_id]?.length > 0 ? (
+                messageHistory[selectedContact.booking_id].map((msg) => (
                   <Box
+                    key={msg.id}
                     sx={{
-                      maxWidth: "70%",
-                      p: 1.5,
-                      borderRadius: "16px",
-                      borderBottomRightRadius: 0,
-                      bgcolor: socketData?.isUser ? "primary.main" : "grey.100",
-                      color: socketData?.isUser ? "white" : "inherit",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: msg.isUser ? "flex-end" : "flex-start",
+                      mb: 2,
                     }}
                   >
-                    <Typography variant="body1">
-                      New booking from {socketData?.first_name}{" "}
-                      {socketData?.last_name} on {socketData?.date}
-                    </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: msg.isUser ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      {!msg.isUser && (
+                        <Avatar
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            mr: 1,
+                            bgcolor: stringToColor(
+                              selectedContact.first_name +
+                                selectedContact.last_name
+                            ),
+                          }}
+                        >
+                          {selectedContact.first_name.charAt(0)}
+                        </Avatar>
+                      )}
+                      <Box
+                        sx={{
+                          maxWidth: "70%",
+                          p: 1.5,
+                          borderRadius: "16px",
+                          borderBottomRightRadius: msg.isUser ? 0 : "16px",
+                          borderBottomLeftRadius: msg.isUser ? "16px" : 0,
+                          bgcolor: msg.isUser ? "primary.main" : "grey.100",
+                          color: msg.isUser ? "white" : "inherit",
+                        }}
+                      >
+                        {!msg.isUser && msg.content.includes("booked") ? (
+                          <Typography variant="body1">
+                            Hey! I just booked this patient{" "}
+                            {selectedContact.first_name}{" "}
+                            {selectedContact.last_name} for an appointment on{" "}
+                            {selectedContact.date} at{" "}
+                            {selectedContact.start_time} o'clock with
+                           {' '} {userDetails?.firstName}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body1">{msg.content}</Typography>
+                        )}
+                      </Box>
+                      {msg.isUser && (
+                        <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                          <img src={share} alt="share" />
+                        </IconButton>
+                      )}
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        mt: 0.5,
+                        gap: 1,
+                        ml: msg.isUser ? 0 : 4,
+                      }}
+                    >
+                      <Typography variant="bodySmallExtraBold" ml={1}>
+                        {msg.isUser ? "You" : selectedContact.first_name}
+                      </Typography>
+                      <Typography variant="bodySmallMedium" color="grey.500">
+                        {msg.timestamp}
+                      </Typography>
+                    </Box>
                   </Box>
-                )}
-
-                {!socketData?.isUser && (
-                  <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                    <img src={share} alt="share" />
-                  </IconButton>
-                )}
-              </Box>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-
-                  mt: 0.5,
-                  ml: socketData?.isUser ? 0 : 0,
-                }}
-              >
-                {!socketData?.isUser && (
-                  <Typography
-                    variant="bodySmallExtraBold"
-                    sx={{ mx: 1, mb: 0.5 }}
-                  >
-                    {socketData?.sender}
+                ))
+              ) : (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                  }}
+                >
+                  <Typography variant="bodyLargeExtraBold">
+                    No messages yet. Start the conversation!
                   </Typography>
-                )}
-
-                <Typography variant="bodySmallMedium" color="grey.500">
-                  {socketData?.timestamp}{" "}
-                </Typography>
-                <Typography variant="bodySmallExtraBold" ml={1}>
-                  {socketData?.isUser && "You"}
-                </Typography>
-              </Box>
-            </Box>
+                </Box>
+              ))}
           </Box>
 
           {/* Message input area */}
@@ -413,7 +455,9 @@ const Messages = () => {
             alignItems: "center",
           }}
         >
-          <Typography variant="bodyLargeExtraBold">No messages yet</Typography>
+          <Typography variant="bodyLargeExtraBold">
+            Select a contact to start chatting
+          </Typography>
         </Box>
       )}
     </Box>

@@ -3,6 +3,7 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { firebaseAuth } from "../firebase/BaseConfig";
 
 import { getUserDetails } from "../firebase/AuthService";
+import { IBooking } from "../utils/Interfaces";
 
 interface IAuthContextType {
   user: User | null;
@@ -13,6 +14,8 @@ interface IAuthContextType {
   socketData: any;
   socket: WebSocket | null;
   connectionStatus: "connecting" | "connected" | "disconnected";
+  message: string;
+  setMessage: (message: string) => void;
 }
 const AuthContext = createContext<IAuthContextType | undefined>(undefined);
 
@@ -22,8 +25,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(undefined);
-  const [socketData, setSocketData] = useState<any>(null);
+  const [socketData, setSocketData] = useState<IBooking[]>([]);
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [message, setMessage] = useState("");
   //@ts-ignore
   const [connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected"
@@ -61,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = async () => {
     await signOut(firebaseAuth);
   };
- 
 
   // Setup WebSocket connection
   useEffect(() => {
@@ -90,7 +93,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         try {
           const data = JSON.parse(event.data);
           console.log("Message from server:", data);
-          setSocketData(data?.payload);
+          if (data?.payload) {
+            setSocketData((prevMessages) => {
+              const isDuplicate = prevMessages.some(
+                (msg) =>
+                  msg.booking_id === data.payload.booking_id ||
+                  msg.phone === data.payload.phone
+              );
+
+              return isDuplicate
+                ? prevMessages
+                : [...prevMessages, data.payload];
+            });
+          }
         } catch (error) {
           console.log("Received non-JSON message:", event.data);
           // Handle non-JSON messages if needed
@@ -122,7 +137,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [userDetails?.user_id]); // Reconnect if user ID changes
   return (
     <AuthContext.Provider
-      value={{ user, userDetails, loading, logout, setUserDetails, socketData, socket, connectionStatus }}
+      value={{
+        user,
+        userDetails,
+        loading,
+        logout,
+        setUserDetails,
+        socketData,
+        socket,
+        connectionStatus,
+        message,
+        setMessage,
+      }}
     >
       {children}
     </AuthContext.Provider>

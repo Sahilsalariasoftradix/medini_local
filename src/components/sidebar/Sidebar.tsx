@@ -6,12 +6,21 @@ import {
   ListItemText,
   Icon,
   Badge,
+  Typography,
 } from "@mui/material";
 import { SidebarIcons } from "../../utils/Icons";
 import { Link } from "react-router-dom";
 import { externalLinks, routes } from "../../utils/links";
 import { overRideSvgColor } from "../../utils/filters";
 import CommonLink from "../common/CommonLink";
+import CommonDialog from "../common/CommonDialog";
+import { useState } from "react";
+import CommonTextField from "../common/CommonTextField";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { formErrorMessage } from "../../utils/errorHandler";
+import { useAuth } from "../../store/AuthContext";
 export const drawerWidth = 240;
 const Sidebar = ({
   open,
@@ -26,6 +35,33 @@ const Sidebar = ({
   isActive: (link: string) => boolean;
   closeDrawerOnMobile: () => void;
 }) => {
+  const helpSchema = z.object({
+    email: z
+      .string()
+      .min(1, { message: formErrorMessage.email.required })
+      .max(100, "Max 100 characters.") // Checks if the field is empty
+      .email({ message: formErrorMessage.email.invalid }), // Checks for a valid email format
+    issue: z.string().min(1, "Issue is required"),
+  });
+  type HelpFormData = z.infer<typeof helpSchema>;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<HelpFormData>({
+    resolver: zodResolver(helpSchema),
+  });
+  const { socketData } = useAuth();
+  const [helpModal, setHelpModal] = useState(false);
+  const onSubmit = (data: HelpFormData) => {
+    console.log(data);
+    reset({
+      email: "",
+      issue: "",
+    });
+    setHelpModal(false);
+  };
   const drawerStyles = {
     width: open ? drawerWidth : isMobile ? 0 : 80,
     position: "relative",
@@ -75,7 +111,9 @@ const Sidebar = ({
       }}
       component={link ? Link : "div"}
       to={link || "#"}
-      onClick={closeDrawerOnMobile}
+      onClick={
+        text === "Get Help" ? () => setHelpModal(true) : closeDrawerOnMobile
+      }
     >
       {iconSrc && <img alt={"logo"} src={iconSrc} />}
       <ListItemText primary={text} />
@@ -187,29 +225,52 @@ const Sidebar = ({
             {renderListItem(
               SidebarIcons.messages,
               "Messages",
-              5,
+              socketData?.length || '',
               routes.sidebar.messages.link
             )}
           </Box>
           <Box>
-            {renderListItem(
-              SidebarIcons.settings,
-              "Settings",
-              undefined,
-              "#"
-            )}
-            {renderListItem(
-              SidebarIcons.help,
-              "Get Help",
-              undefined,
-              "#"
-            )}
+            {renderListItem(SidebarIcons.settings, "Settings", undefined, "#")}
+            {renderListItem(SidebarIcons.help, "Get Help", undefined, "#")}
+            <CommonDialog
+              open={helpModal}
+              onClose={() => setHelpModal(false)}
+              cancelText="Cancel"
+              confirmButtonType="primary"
+              confirmText="Send"
+              onConfirm={handleSubmit(onSubmit)}
+              // hideCloseIcon
+            >
+              <Box>
+                <Typography variant="h4">Help</Typography>
+                <Typography variant="bodyLargeMedium" color="grey.600">
+                  Describe your issue and we will get back to you by email
+                </Typography>
+                <Typography variant="bodyLargeMedium" mt={2} mb={1}>
+                  Email
+                </Typography>
+                <CommonTextField
+                  errorMessage={errors.email?.message}
+                  register={register("email")}
+                  placeholder="Enter your email"
+                />
+                <Typography variant="bodyLargeMedium" mt={2} mb={1}>
+                  Issue
+                </Typography>
+                <CommonTextField
+                  placeholder="Enter your email"
+                  multiline
+                  rows={6}
+                  errorMessage={errors.issue?.message}
+                  register={register("issue")}
+                />
+                {/* <CommonButton text="Submit" /> */}
+              </Box>
+            </CommonDialog>
             <Box display={"flex"} justifyContent={"space-between"} px={2}>
-              <CommonLink to={externalLinks.termsOfService}>Terms</CommonLink>
-              |
+              <CommonLink to={externalLinks.termsOfService}>Terms</CommonLink>|
               <CommonLink to={externalLinks.privacyPolicy}>Privacy</CommonLink>
             </Box>
-            
           </Box>
         </Box>
       </List>

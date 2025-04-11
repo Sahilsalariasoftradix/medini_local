@@ -54,6 +54,10 @@ interface AppointmentCheckerContextType {
   loadMoreCompanies: () => void;
   selectedBookingId: string | null;
   setSelectedBookingId: (selectedBookingId: string | null) => void;
+  submitting: boolean;
+  setSubmitting: (submitting: boolean) => void;
+  confirmPopup: boolean;
+  setConfirmPopup: (confirmPopup: boolean) => void;
 }
 export const EditAppointmentSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -82,6 +86,7 @@ interface AppointmentData {
   clinicLocation: string;
   appointmentStatus?: "scheduled" | "confirmed" | "completed" | "cancelled";
   referenceNumber?: string;
+  
 }
 
 const defaultAppointmentData: AppointmentData = {
@@ -147,13 +152,13 @@ export const AppointmentCheckerProvider = ({
     totalPages: 1,
     isLoading: false,
   });
-
+  const [confirmPopup, setConfirmPopup] = useState(false);
   const [practitioners, setPractitioners] = useState<ICompanyUsers[]>([]);
   const [referenceNumber, setReferenceNumber] = useState<string>("");
   const [userBookings, setUserBookings] = useState<IGetCustomerBookings[]>([]);
-  const [timer, setTimer] = useState(60); // Timer duration in seconds
+  const [timer, setTimer] = useState(0); // Timer duration in seconds
   const [isResendDisabled, setIsResendDisabled] = useState(true);
-
+  const [submitting, setSubmitting] = useState(false);
   const startTimer = () => {
     setIsResendDisabled(true);
     setTimer(60);
@@ -281,6 +286,10 @@ export const AppointmentCheckerProvider = ({
         loadMoreCompanies,
         selectedBookingId,
         setSelectedBookingId,
+        submitting,
+        setSubmitting,
+        confirmPopup,
+        setConfirmPopup,
       }}
     >
       {children}

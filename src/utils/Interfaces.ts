@@ -225,6 +225,7 @@ export interface IBooking {
   email: string;
   phone: string;
   booking_type: EnBookingType.IN_PERSON | EnBookingType.PHONE;
+  code?: string;
 }
 export interface IUpdateBooking {
   booking_type: EnBookingType.IN_PERSON | EnBookingType.PHONE;

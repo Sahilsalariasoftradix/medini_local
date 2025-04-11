@@ -2,24 +2,33 @@ import { Box, Typography, Divider, CircularProgress } from "@mui/material";
 import { useAppointmentChecker } from "../../../store/AppointmentCheckerContext";
 import CommonButton from "../../common/CommonButton";
 import { format } from "date-fns";
-import { useState } from "react";
 import { availabilityIcons, EditFormIcon } from "../../../utils/Icons";
 import StepProgress from "../StepProgress";
-import { EnBookingType, EnStepProgress } from "../../../utils/enums";
-import { createBooking, sendVerificationCode } from "../../../api/userApi";
-import dayjs from "dayjs";
+import { EnBookingType, EnOTPType, EnStepProgress } from "../../../utils/enums";
+import {  sendVerificationCode } from "../../../api/userApi";
 import CommonSnackbar from "../../common/CommonSnackbar";
 import CommonDialog from "../../common/CommonDialog";
 import OtpReceiver from "../ExistingAppointment/OtpReceiver";
 
 const ConfirmAppointment = () => {
-  const { step, setStep, newAppointmentData, setReferenceNumber, startTimer, isResendDisabled, timer } =
-    useAppointmentChecker();
+  const {
+    step,
+    setStep,
+    newAppointmentData,
+    startTimer,
+    isResendDisabled,
+    timer,
+    setSubmitting,
+    submitting,
+    confirmPopup,
+    setConfirmPopup,
+  } = useAppointmentChecker();
 
-  const [submitting, setSubmitting] = useState(false);
   const { snackbar, setSnackbar } = useAppointmentChecker();
-  const [confirmPopup, setConfirmPopup] = useState(false);
+  
   const sendCode = async () => {
+
+console.log(!isResendDisabled || timer === 0)
     setSubmitting(true);
     try {
       // Only send code and start timer if the timer isn't already running
@@ -28,14 +37,15 @@ const ConfirmAppointment = () => {
           newAppointmentData?.phone || "",
           newAppointmentData?.firstName || ""
         );
+
         setSnackbar({
           open: true,
           message: "Verification code sent successfully",
           severity: "success",
         });
         startTimer();
+        setConfirmPopup(true);
       }
-      setConfirmPopup(true);
     } catch (error: any) {
       setSnackbar({
         open: true,
@@ -46,60 +56,60 @@ const ConfirmAppointment = () => {
       setSubmitting(false);
     }
   };
-  const submitBookingData = async () => {
-    setSubmitting(true);
-    try {
-      // Convert time string (e.g., "14:30") to Date object
-      const timeArray = newAppointmentData?.time?.split(":").map(Number) || [
-        0, 0,
-      ];
-      const [hours, minutes] = timeArray;
-      const startTime = new Date(newAppointmentData?.day || new Date());
-      startTime.setHours(hours, minutes, 0, 0); // Set start time
+  // const submitBookingData = async () => {
+  //   setSubmitting(true);
+  //   try {
+  //     // Convert time string (e.g., "14:30") to Date object
+  //     const timeArray = newAppointmentData?.time?.split(":").map(Number) || [
+  //       0, 0,
+  //     ];
+  //     const [hours, minutes] = timeArray;
+  //     const startTime = new Date(newAppointmentData?.day || new Date());
+  //     startTime.setHours(hours, minutes, 0, 0); // Set start time
 
-      // Add appointment length (in minutes)
-      const endTime = new Date(startTime);
-      endTime.setMinutes(
-        endTime.getMinutes() + Number(newAppointmentData?.appointmentLength)
-      );
+  //     // Add appointment length (in minutes)
+  //     const endTime = new Date(startTime);
+  //     endTime.setMinutes(
+  //       endTime.getMinutes() + Number(newAppointmentData?.appointmentLength)
+  //     );
 
-      const payload = {
-        //@ts-ignore
-        user_id: newAppointmentData?.practitioner?.id,
-        date: dayjs(newAppointmentData?.day).format("YYYY-MM-DD"),
-        start_time: newAppointmentData?.time,
-        end_time: `${endTime.getHours()}:${String(
-          endTime.getMinutes()
-        ).padStart(2, "0")}`, // Format as HH:mm
-        details: newAppointmentData?.details,
-        booking_type: newAppointmentData?.appointmentType,
-        email: newAppointmentData?.email,
-        first_name: newAppointmentData?.firstName,
-        last_name: newAppointmentData?.lastName,
-        phone: newAppointmentData?.phone,
-      };
+  //     const payload = {
+  //       //@ts-ignore
+  //       user_id: newAppointmentData?.practitioner?.id,
+  //       date: dayjs(newAppointmentData?.day).format("YYYY-MM-DD"),
+  //       start_time: newAppointmentData?.time,
+  //       end_time: `${endTime.getHours()}:${String(
+  //         endTime.getMinutes()
+  //       ).padStart(2, "0")}`, // Format as HH:mm
+  //       details: newAppointmentData?.details,
+  //       booking_type: newAppointmentData?.appointmentType,
+  //       email: newAppointmentData?.email,
+  //       first_name: newAppointmentData?.firstName,
+  //       last_name: newAppointmentData?.lastName,
+  //       phone: newAppointmentData?.phone,
+  //     };
 
-      //@ts-ignore
-      const resp = await createBooking(payload);
-      setReferenceNumber(resp.booking_id);
-      setTimeout(() => {
-        setStep(step + 1);
-      }, 500);
-      setSnackbar({
-        open: true,
-        message: "Appointment created successfully",
-        severity: "success",
-      });
-    } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: error.message as string,
-        severity: "error",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  //     //@ts-ignore
+  //     const resp = await createBooking(payload);
+  //     setReferenceNumber(resp.booking_id);
+  //     setTimeout(() => {
+  //       setStep(step + 1);
+  //     }, 500);
+  //     setSnackbar({
+  //       open: true,
+  //       message: "Appointment created successfully",
+  //       severity: "success",
+  //     });
+  //   } catch (error: any) {
+  //     setSnackbar({
+  //       open: true,
+  //       message: error.message as string,
+  //       severity: "error",
+  //     });
+  //   } finally {
+  //     setSubmitting(false);
+  //   }
+  // };
 
   // Format date and time for display
   const formattedDate = newAppointmentData?.day
@@ -314,10 +324,11 @@ const ConfirmAppointment = () => {
           required={true}
           closePopup={() => setConfirmPopup(false)}
           resendCode={() => sendCode()}
-          onSuccessfulVerification={() => {
-            setConfirmPopup(false);
-            submitBookingData();
-          }}
+          type={EnOTPType.NEW}
+          // onSuccessfulVerification={() => {
+          //   setConfirmPopup(false);
+          //   submitBookingData();
+          // }}
         />
       </CommonDialog>
       <CommonSnackbar

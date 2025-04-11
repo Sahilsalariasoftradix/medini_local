@@ -17,8 +17,9 @@ import EditAppointment from "./ExistingAppointment/EditAppointment";
 import CommonButton from "../common/CommonButton";
 import OtpReceiver from "./ExistingAppointment/OtpReceiver";
 import StepFormLayout from "../StepForm/StepFormLayout";
-import { getCustomerBookings, sendVerificationCode } from "../../api/userApi";
+import {  sendVerificationCode } from "../../api/userApi";
 import CommonSnackbar from "../common/CommonSnackbar";
+import { EnOTPType } from "../../utils/enums";
 
 const AppointmentChecker: React.FC<AppointmentCheckerProps> = () => {
   const {
@@ -30,7 +31,7 @@ const AppointmentChecker: React.FC<AppointmentCheckerProps> = () => {
     setHasAppointment,
     existingPhone,
     existingAppointmentData,
-    setUserBookings,
+
     // userBookings,
     // selectedBookingId,
     // setSelectedBookingId,
@@ -146,15 +147,16 @@ const AppointmentChecker: React.FC<AppointmentCheckerProps> = () => {
               resendCode={() => {
                 sendCode();
               }}
-              onSuccessfulVerification={() => {
-                getCustomerBookings(
-                  Number(existingAppointmentData?.appointment_location),
-                  existingPhone
-                ).then((bookings) => {
-                  setUserBookings(bookings);
-                  setStep(4);
-                });
-              }}
+              type={EnOTPType.EXISTING}
+              // onSuccessfulVerification={() => {
+              //   getCustomerBookings(
+              //     Number(existingAppointmentData?.appointment_location),
+              //     existingPhone,
+              //   ).then((bookings) => {
+              //     setUserBookings(bookings);
+              //     setStep(4);
+              //   });
+              // }}
             />
           );
         case 4:

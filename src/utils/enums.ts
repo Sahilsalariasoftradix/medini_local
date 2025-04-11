@@ -133,10 +133,13 @@ export enum EnBookingDuration {
 export enum EnGetCallHistory {
   COMPLETED = "completed",
   PENDING = "pending",
- 
 }
 export enum EnGetBookingRange {
   DAY = "day",
   WEEK = "week",
   MONTH = "month",
+}
+export enum EnOTPType {
+  NEW = "new",
+  EXISTING = "existing",
 }

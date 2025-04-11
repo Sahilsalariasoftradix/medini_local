@@ -184,7 +184,7 @@ export const getBookingsByUser = async (
 };
 
 export const getCallHistoryData = async (
-  userId: number, 
+  userId: number,
   status: string,
   offset: number = 0,
   limit: number = 10,
@@ -192,7 +192,9 @@ export const getCallHistoryData = async (
 ) => {
   try {
     const response = await apiClient.get(
-      `call-history?user_id=${userId}&status=${status}&offset=${offset}&limit=${limit}${search ? `&search=${search}` : ''}`
+      `call-history?user_id=${userId}&status=${status}&offset=${offset}&limit=${limit}${
+        search ? `&search=${search}` : ""
+      }`
     );
     return response.data;
   } catch (error) {
@@ -232,6 +234,7 @@ export const sendVerificationCode = async (
       phoneNumber: phoneNumber,
       customerName: customerName,
     });
+  
     return response.data;
   } catch (error) {
     console.error("Error sending verification code:", error);
@@ -256,11 +259,12 @@ export const verifyVerificationCode = async (
 };
 export const getCustomerBookings = async (
   companyId: number,
-  phoneNumber: string
+  phoneNumber: string,
+  code?: string
 ) => {
   try {
     const response = await apiClient.get(
-      `bookings/customer?phone=${phoneNumber}&company_id=${companyId}`
+      `bookings/customer?phone=${phoneNumber}&company_id=${companyId}&code=${code}`
     );
     return response.data.bookings;
   } catch (error) {

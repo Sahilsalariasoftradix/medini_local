@@ -21,9 +21,9 @@ interface CommonDialogProps {
   fullWidth?: boolean;
   maxWidth?: "xs" | "sm" | "md" | "lg" | "xl";
   hideCloseIcon?: boolean;
-  loading?:boolean;
-  disabled?:boolean;
-  styles?:React.CSSProperties;
+  loading?: boolean;
+  disabled?: boolean;
+  styles?: React.CSSProperties;
   confirmButtonType?:
     | "inherit"
     | "primary"
@@ -48,13 +48,13 @@ const CommonDialog: React.FC<CommonDialogProps> = ({
   confirmButtonType,
   loading,
   disabled,
-  styles
+  styles,
 }) => {
   const DialogStyles = {
     border: "2px solid #E2E8F0",
     boxShadow: "0px 5px 10px 0px #0000001A",
     borderRadius: "16px",
-    ...styles
+    ...styles,
   };
   return (
     <Dialog
@@ -66,7 +66,11 @@ const CommonDialog: React.FC<CommonDialogProps> = ({
         " & .MuiPaper-root ": DialogStyles,
       }}
     >
-      <Box display="flex" alignItems="center" justifyContent="space-between">
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent={!hideCloseIcon ? "end" : "space-between"}
+      >
         {title && (
           <DialogTitle component={"h6"} sx={{ p: 0 }}>
             {title}
@@ -93,7 +97,7 @@ const CommonDialog: React.FC<CommonDialogProps> = ({
         {onConfirm && (
           <CommonButton
             color={confirmButtonType ? confirmButtonType : "inherit"}
-            sx={{ width:cancelText? "50%":'100%' }}
+            sx={{ width: cancelText ? "50%" : "100%" }}
             text={confirmText}
             onClick={onConfirm}
             loading={loading}
