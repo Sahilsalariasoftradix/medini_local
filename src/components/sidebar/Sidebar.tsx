@@ -21,6 +21,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { formErrorMessage } from "../../utils/errorHandler";
 import { useAuth } from "../../store/AuthContext";
+import { LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 export const drawerWidth = 240;
 const Sidebar = ({
   open,
@@ -35,6 +37,15 @@ const Sidebar = ({
   isActive: (link: string) => boolean;
   closeDrawerOnMobile: () => void;
 }) => {
+  const weekDays = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
   const helpSchema = z.object({
     email: z
       .string()
@@ -54,6 +65,7 @@ const Sidebar = ({
   });
   const { socketData } = useAuth();
   const [helpModal, setHelpModal] = useState(false);
+  const [settingsModal, setSettingsModal] = useState(false);
   const onSubmit = (data: HelpFormData) => {
     console.log(data);
     reset({
@@ -112,7 +124,11 @@ const Sidebar = ({
       component={link ? Link : "div"}
       to={link || "#"}
       onClick={
-        text === "Get Help" ? () => setHelpModal(true) : closeDrawerOnMobile
+        text === "Get Help"
+          ? () => setHelpModal(true)
+          : text === "Settings"
+          ? () => setSettingsModal(true)
+          : closeDrawerOnMobile
       }
     >
       {iconSrc && <img alt={"logo"} src={iconSrc} />}
@@ -225,7 +241,7 @@ const Sidebar = ({
             {renderListItem(
               SidebarIcons.messages,
               "Messages",
-              socketData?.length || '',
+              socketData?.length || "",
               routes.sidebar.messages.link
             )}
           </Box>
@@ -239,11 +255,11 @@ const Sidebar = ({
               confirmButtonType="primary"
               confirmText="Send"
               onConfirm={handleSubmit(onSubmit)}
+              title="Help"
               // hideCloseIcon
             >
               <Box>
-                <Typography variant="h4">Help</Typography>
-                <Typography variant="bodyLargeMedium" color="grey.600">
+                <Typography variant="bodyMediumMedium" color="grey.600">
                   Describe your issue and we will get back to you by email
                 </Typography>
                 <Typography variant="bodyLargeMedium" mt={2} mb={1}>
@@ -265,6 +281,48 @@ const Sidebar = ({
                   register={register("issue")}
                 />
                 {/* <CommonButton text="Submit" /> */}
+              </Box>
+            </CommonDialog>
+            <CommonDialog
+              maxWidth="sm"
+              title="Operating Hours for AI Assistant"
+              open={settingsModal}
+              cancelText="Cancel"
+              confirmButtonType="primary"
+              confirmText="Save"
+              onClose={() => setSettingsModal(false)}
+              onConfirm={() => setSettingsModal(false)}
+            >
+              <Box>
+               
+                <Typography variant="bodyMediumMedium" mb={2} color="grey.600">
+                  Set the hours the assistant will be active on your phone line
+                </Typography>
+                {weekDays.map((day) => (
+                  <Box
+                    key={day}
+                    display={"flex"}
+                    alignItems={"center"}
+                    justifyContent={"space-between"}
+                    gap={5}
+                  >
+                    <Typography
+                      variant="bodyLargeMedium"
+                      py={1}
+                      minWidth={"70px"}
+                    >
+                      {day}
+                    </Typography>
+                    <Box py={1}>
+                      <LocalizationProvider dateAdapter={AdapterDayjs}>
+                        <Box display={"flex"} gap={2}>
+                          <TimePicker sx={{ width: "50%" }}  />
+                          <TimePicker sx={{ width: "50%" }} />
+                        </Box>
+                      </LocalizationProvider>
+                    </Box>
+                  </Box>
+                ))}
               </Box>
             </CommonDialog>
             <Box display={"flex"} justifyContent={"space-between"} px={2}>

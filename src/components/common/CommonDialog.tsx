@@ -69,7 +69,7 @@ const CommonDialog: React.FC<CommonDialogProps> = ({
       <Box
         display="flex"
         alignItems="center"
-        justifyContent={!hideCloseIcon ? "end" : "space-between"}
+        justifyContent={title ? "space-between" : "end"}
       >
         {title && (
           <DialogTitle component={"h6"} sx={{ p: 0 }}>

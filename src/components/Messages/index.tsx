@@ -206,7 +206,7 @@ console.log(socketData)
                       height: 40,
                     }}
                   >
-                    {contact.first_name.charAt(0)}
+                    {contact.first_name.charAt(0)} 
                     {contact.last_name.charAt(0)}
                   </Avatar>
                   <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
@@ -218,7 +218,7 @@ console.log(socketData)
                       }}
                     >
                       <Typography variant="bodyLargeExtraBold" noWrap>
-                        {contact.first_name}
+                        {contact.first_name} {' '}
                         {contact.last_name}
                       </Typography>
                       <Typography variant="bodyMediumMedium">
@@ -327,7 +327,7 @@ console.log(socketData)
                         justifyContent: msg.isUser ? "flex-end" : "flex-start",
                       }}
                     >
-                      {!msg.isUser && (
+                      {/* {!msg.isUser && (
                         <Avatar
                           sx={{
                             width: 32,
@@ -341,7 +341,7 @@ console.log(socketData)
                         >
                           {selectedContact.first_name.charAt(0)}
                         </Avatar>
-                      )}
+                      )} */}
                       <Box
                         sx={{
                           maxWidth: "70%",
@@ -379,7 +379,7 @@ console.log(socketData)
                         alignItems: "center",
                         mt: 0.5,
                         gap: 1,
-                        ml: msg.isUser ? 0 : 4,
+                        ml: msg.isUser ? 0 : 0,
                       }}
                     >
                       <Typography variant="bodySmallExtraBold" ml={1}>
