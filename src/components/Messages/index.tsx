@@ -78,8 +78,8 @@ const Messages = () => {
 
   //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
-  const { socketData, socket, message, setMessage,userDetails } = useAuth();
-console.log(socketData)
+  const { socketData, socket, message, setMessage, userDetails } = useAuth();
+  console.log(socketData);
   const handleSend = () => {
     if (
       message.trim() &&
@@ -206,7 +206,7 @@ console.log(socketData)
                       height: 40,
                     }}
                   >
-                    {contact.first_name.charAt(0)} 
+                    {contact.first_name.charAt(0)}
                     {contact.last_name.charAt(0)}
                   </Avatar>
                   <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
@@ -218,8 +218,7 @@ console.log(socketData)
                       }}
                     >
                       <Typography variant="bodyLargeExtraBold" noWrap>
-                        {contact.first_name} {' '}
-                        {contact.last_name}
+                        {contact.first_name} {contact.last_name}
                       </Typography>
                       <Typography variant="bodyMediumMedium">
                         {contact.start_time}
@@ -359,8 +358,8 @@ console.log(socketData)
                             {selectedContact.first_name}{" "}
                             {selectedContact.last_name} for an appointment on{" "}
                             {selectedContact.date} at{" "}
-                            {selectedContact.start_time} o'clock with
-                           {' '} {userDetails?.firstName}
+                            {selectedContact.start_time} o'clock with{" "}
+                            {userDetails?.firstName}
                           </Typography>
                         ) : (
                           <Typography variant="body1">{msg.content}</Typography>
@@ -456,7 +455,7 @@ console.log(socketData)
           }}
         >
           <Typography variant="bodyLargeExtraBold">
-            Select a contact to start chatting
+            You will get a message here when your AI books a call by phone
           </Typography>
         </Box>
       )}

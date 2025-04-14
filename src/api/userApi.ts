@@ -1,4 +1,5 @@
 import {
+  IAISchedule,
   IAvailabilityRequest,
   IAvailabilitySpecific,
   IBooking,
@@ -234,7 +235,7 @@ export const sendVerificationCode = async (
       phoneNumber: phoneNumber,
       customerName: customerName,
     });
-  
+
     return response.data;
   } catch (error) {
     console.error("Error sending verification code:", error);
@@ -269,6 +270,43 @@ export const getCustomerBookings = async (
     return response.data.bookings;
   } catch (error) {
     console.error("Error getting customer bookings:", error);
+    throw error;
+  }
+};
+export const postUserQuery = async (email: string, message: string) => {
+  try {
+    const resp = await apiClient.post(`users/inquiry`, {
+      email: email,
+      message: message,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error("Error posting user query:", error);
+    throw error;
+  }
+};
+export const postAISchedule = async (
+  companyId: number,
+  schedule: IAISchedule[]
+) => {
+  try {
+    const response = await apiClient.post(`config/aischedule`, {
+      company_id: companyId,
+      schedule: schedule,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error posting AI schedule:", error);
+    throw error;
+  }
+};
+
+export const getAISchedule = async (companyId: number) => {
+  try {
+    const response = await apiClient.get(`config?company_id=${companyId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting AI schedule:", error);
     throw error;
   }
 };

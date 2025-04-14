@@ -334,15 +334,15 @@ export interface HeadCell {
 }
 export type Order = "asc" | "desc";
 export interface EnhancedTableProps {
-  numSelected: number;
+  // numSelected: number;
   onRequestSort: (
     event: React.MouseEvent<unknown>,
     property: keyof Data
   ) => void;
-  onSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  // onSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
   order: Order;
   orderBy: string;
-  rowCount: number;
+  // rowCount: number;
 }
 export interface IGetBookingsByUser {
   bookings: IBooking[];
@@ -403,4 +403,11 @@ export interface IGetCustomerBookings {
   details: string;
   user_id: number;
   company_id: number;
+}
+export interface IAISchedule {
+  day_of_week: string;
+  is_ai_on_all_day: boolean;
+  is_custom: boolean;
+  start_time: string | null;
+  end_time: string | null;
 }

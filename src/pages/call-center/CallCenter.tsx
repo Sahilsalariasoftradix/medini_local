@@ -34,7 +34,6 @@ import {
   Select,
   TextField,
 } from "@mui/material";
-import { SelectChangeEvent } from "@mui/material/Select";
 import { overRideSvgColor } from "../../utils/filters";
 import CommonDialog from "../../components/common/CommonDialog";
 import {
@@ -111,14 +110,7 @@ function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
 }
 
 function EnhancedTableHead(props: EnhancedTableProps) {
-  const {
-    onSelectAllClick,
-    order,
-    orderBy,
-    numSelected,
-    rowCount,
-    onRequestSort,
-  } = props;
+  const { order, orderBy, onRequestSort } = props;
   const createSortHandler =
     (property: keyof Data) => (event: React.MouseEvent<unknown>) => {
       onRequestSort(event, property);
@@ -127,21 +119,6 @@ function EnhancedTableHead(props: EnhancedTableProps) {
   return (
     <TableHead>
       <TableRow sx={{ borderTop: "1px solid #EDF2F7" }}>
-        <TableCell
-          sx={{ borderBottom: "1px solid #EDF2F7" }}
-          padding="checkbox"
-        >
-          <RoundCheckbox
-            label=""
-            color="primary"
-            indeterminate={numSelected > 0 && numSelected < rowCount}
-            checked={rowCount > 0 && numSelected === rowCount}
-            onChange={onSelectAllClick}
-            inputProps={{
-              "aria-label": "select all desserts",
-            }}
-          />
-        </TableCell>
         {headCells.map((headCell) => (
           <TableCell
             sx={{ borderBottom: "1px solid #EDF2F7" }}
@@ -301,7 +278,6 @@ const ActionMenu = ({
       handleClose(event);
     };
   const handleRowDelete = async () => {
-   
     setLoading(true);
     try {
       await deleteCall(row.id);
@@ -448,7 +424,6 @@ type AddCallSchema = z.infer<typeof addCallSchema>;
 const CallCenter = () => {
   const [order, setOrder] = useState<Order>("asc");
   const [orderBy, setOrderBy] = useState<string>("date");
-  const [selected, setSelected] = useState<readonly number[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openAddCallDetails, setOpenAddCallDetails] = useState(false);
@@ -547,7 +522,6 @@ const CallCenter = () => {
   });
 
   const refreshCallHistory = async () => {
- 
     setTableLoading(true);
     try {
       const response = await getCallHistoryData(
@@ -609,52 +583,6 @@ const CallCenter = () => {
     const isAsc = orderBy === property && order === "asc";
     setOrder(isAsc ? "desc" : "asc");
     setOrderBy(property);
-  };
-
-  const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.checked) {
-      const newSelected = getCallHistory.map((_, index) => index); // Use index as ID
-      setSelected(newSelected);
-      return;
-    }
-    setSelected([]);
-  };
-  //@ts-ignore
-  const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
-    const selectedIndex = selected.indexOf(id);
-    let newSelected: readonly number[] = [];
-
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, id);
-    } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1));
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelected = newSelected.concat(
-        selected.slice(0, selectedIndex),
-        selected.slice(selectedIndex + 1)
-      );
-    }
-    setSelected(newSelected);
-  };
-
-  const handleChangePage = (
-    event: React.MouseEvent<HTMLButtonElement> | null,
-    newPage: number
-  ) => {
-    // For MUI Pagination, pages start from 1
-    // For TablePagination, pages start from 0
-    const adjustedPage = event?.type === "click" ? newPage - 1 : newPage;
-    setPage(adjustedPage);
-    // No need to call refreshCallHistory here as it will be triggered by the useEffect
-  };
-
-  const handleChangeRowsPerPage = (event: SelectChangeEvent<number>) => {
-    const newRowsPerPage = parseInt(event.target.value.toString(), 10);
-    setRowsPerPage(newRowsPerPage);
-    setPage(0); // Reset to first page when changing rows per page
-    // No need to call refreshCallHistory here as it will be triggered by the useEffect
   };
 
   const visibleRows = useMemo(() => {
@@ -925,7 +853,7 @@ const CallCenter = () => {
         setOpenAddCallDetails(false);
         reset();
         setCurrentEditingCall(null); // Reset the editing state
-        if(currentEditingCall){
+        if (currentEditingCall) {
           reset();
         }
         setSnackbar({
@@ -945,7 +873,6 @@ const CallCenter = () => {
         });
       }
       refreshCallHistory();
-  
     } catch (error) {
       setSnackbar({
         open: true,
@@ -1112,49 +1039,26 @@ const CallCenter = () => {
               <TableContainer sx={{ height: "calc(100vh - 300px)" }}>
                 <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
                   <EnhancedTableHead
-                    numSelected={selected.length}
                     order={order}
                     orderBy={orderBy}
-                    onSelectAllClick={handleSelectAllClick}
                     onRequestSort={handleRequestSort}
-                    rowCount={getCallHistory.length}
                   />
                   {getCallHistory.length > 0 ? (
                     <TableBody>
                       {visibleRows.map((row, index) => {
-                        const isItemSelected = selected.includes(row.id);
                         const labelId = `enhanced-table-checkbox-${index}`;
 
                         return (
                           <TableRow
                             hover
-                            onClick={(event) => handleClick(event, row.id)}
-                            role="checkbox"
-                            aria-checked={isItemSelected}
                             tabIndex={-1}
                             key={row.id}
-                            selected={isItemSelected}
                             sx={{
                               cursor: "pointer",
                               "& td": { borderColor: "#EDF2F7" },
                             }}
                           >
-                            <TableCell padding="checkbox">
-                              <RoundCheckbox
-                                label=""
-                                color="primary"
-                                checked={isItemSelected}
-                                inputProps={{
-                                  "aria-labelledby": labelId,
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell
-                              // component="th"
-                              id={labelId}
-                              scope="row"
-                              padding="none"
-                            >
+                            <TableCell id={labelId} scope="row" padding="none">
                               <Typography variant="bodyMediumExtraBold">
                                 {" "}
                                 {row.contact}
@@ -1251,7 +1155,8 @@ const CallCenter = () => {
                   </Typography>
                   <Select
                     value={rowsPerPage}
-                    onChange={handleChangeRowsPerPage}
+                    //@ts-ignore
+                    onChange={(e) => setRowsPerPage(parseInt(e.target.value))}
                     size="small"
                     sx={{
                       minWidth: "70px",
@@ -1283,7 +1188,8 @@ const CallCenter = () => {
                   shape="rounded"
                   count={totalPages}
                   page={page + 1} // MUI Pagination uses 1-based index
-                  onChange={(e, page) => handleChangePage(e as any, page)}
+                  //@ts-ignore
+                  onChange={(e, page) => setPage(page - 1)}
                   color="primary"
                   sx={{
                     "& .MuiPaginationItem-previousNext": {

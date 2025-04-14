@@ -16,7 +16,7 @@ export const SignUpSchema = z.object({
     .max(20, "Max 20 characters.")
     .refine(
       (password) =>
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&*()\-_+=\\|{};:/?.><])[A-Za-z\d@#$%^&*()\-_+=\\|{};:/?.><]{8,}$/.test(
           password
         ),
       {
@@ -32,7 +32,6 @@ export const SignUpSchema = z.object({
     .string()
     .min(1, formErrorMessage.lastName.required)
     .max(50, formErrorMessage.lastName.tooLong),
-
 });
 // Validation schema
 export const SignInSchema = z.object({
@@ -41,21 +40,19 @@ export const SignInSchema = z.object({
     .min(1, { message: formErrorMessage.email.required })
     .max(100, "Max 100 characters.") // Checks if the field is empty
     .email({ message: formErrorMessage.email.invalid }), // Checks for a valid email format
-  password: z
-    .string()
-    .min(1, { message: formErrorMessage.password.required }) // Empty password
-    // .min(8, { message: formErrorMessage.password.tooShort })
-    // .max(20, "Max 20 characters.") // Less than 8 characters
-    // .refine(
-    //   (password) =>
-    //     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
-    //       password
-    //     ),
-    //   {
-    //     message:
-    //       "Password must contain 8 characters (at least 1 uppercase, 1 lowercase, 1 number, and 1 special character).",
-    //   }
-    // ),
+  password: z.string().min(1, { message: formErrorMessage.password.required }), // Empty password
+  // .min(8, { message: formErrorMessage.password.tooShort })
+  // .max(20, "Max 20 characters.") // Less than 8 characters
+  // .refine(
+  //   (password) =>
+  //     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
+  //       password
+  //     ),
+  //   {
+  //     message:
+  //       "Password must contain 8 characters (at least 1 uppercase, 1 lowercase, 1 number, and 1 special character).",
+  //   }
+  // ),
 });
 // Validation schema
 export const ResetPasswordSchema = z.object({

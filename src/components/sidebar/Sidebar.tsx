@@ -7,6 +7,11 @@ import {
   Icon,
   Badge,
   Typography,
+  AlertColor,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormControl,
 } from "@mui/material";
 import { SidebarIcons } from "../../utils/Icons";
 import { Link } from "react-router-dom";
@@ -14,7 +19,7 @@ import { externalLinks, routes } from "../../utils/links";
 import { overRideSvgColor } from "../../utils/filters";
 import CommonLink from "../common/CommonLink";
 import CommonDialog from "../common/CommonDialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CommonTextField from "../common/CommonTextField";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +28,15 @@ import { formErrorMessage } from "../../utils/errorHandler";
 import { useAuth } from "../../store/AuthContext";
 import { LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import {
+  postUserQuery,
+  postAISchedule,
+  getAISchedule,
+} from "../../api/userApi";
+import CommonSnackbar from "../common/CommonSnackbar";
+import dayjs from "dayjs";
+import { IAISchedule } from "../../utils/Interfaces";
+
 export const drawerWidth = 240;
 const Sidebar = ({
   open,
@@ -63,16 +77,225 @@ const Sidebar = ({
   } = useForm<HelpFormData>({
     resolver: zodResolver(helpSchema),
   });
-  const { socketData } = useAuth();
+
+  const { socketData, userDetails } = useAuth();
   const [helpModal, setHelpModal] = useState(false);
   const [settingsModal, setSettingsModal] = useState(false);
-  const onSubmit = (data: HelpFormData) => {
-    console.log(data);
-    reset({
-      email: "",
-      issue: "",
+  const [isLoading, setIsLoading] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  // Initialize schedule state with default values for each day
+  const [schedule, setSchedule] = useState<IAISchedule[]>(
+    weekDays.map((day) => ({
+      day_of_week: day,
+      is_ai_on_all_day: false,
+      is_custom: false,
+      start_time: "hh:mm",
+      end_time: "hh:mm",
+    }))
+  );
+
+  const [validationErrors, setValidationErrors] = useState<{
+    [key: string]: string;
+  }>({});
+  console.log(schedule);
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      if (!userDetails?.company_id) return;
+      const response = await getAISchedule(Number(userDetails?.company_id));
+      setSchedule(
+        response?.config ??
+        weekDays.map((day) => ({
+          day_of_week: day,
+          is_ai_on_all_day: false,
+          is_custom: false,
+          start_time: "hh:mm",
+          end_time: "hh:mm",
+        }))
+      );
+    };
+    fetchSchedule();
+  }, [userDetails?.company_id, settingsModal]);
+
+  // Handle AI schedule submission
+  const handleSubmitAISchedule = async () => {
+    if (!userDetails?.company_id) return;
+
+    // Validate custom times
+    const errors: { [key: string]: string } = {};
+    let hasError = false;
+
+    schedule.forEach((day) => {
+      if (day.is_custom) {
+        // Check if times are either the default "hh:mm" or not in the expected format
+        if (
+          day.start_time === "hh:mm" ||
+          day.end_time === "hh:mm" ||
+          !day.start_time ||
+          !day.end_time ||
+          !/^\d{2}:\d{2}:\d{2}$/.test(day.start_time) ||
+          !/^\d{2}:\d{2}:\d{2}$/.test(day.end_time) ||
+          day.start_time === day.end_time ||
+          day.start_time > day.end_time
+        ) {
+          errors[day.day_of_week] = "Please select a valid time range";
+          hasError = true;
+        }
+      }
     });
-    setHelpModal(false);
+
+    setValidationErrors(errors);
+
+    if (hasError) return;
+
+    try {
+      setSettingsLoading(true);
+
+      // Prepare the schedule data to send to the API
+      const formattedSchedule = schedule.map((day) => {
+        // For "off" days, remove time values
+        if (!day.is_ai_on_all_day && !day.is_custom) {
+          return {
+            day_of_week: day.day_of_week,
+            is_ai_on_all_day: false,
+            is_custom: false,
+            start_time: null,
+            end_time: null,
+          };
+        }
+
+        // For "all day", remove time values
+        if (day.is_ai_on_all_day && !day.is_custom) {
+          return {
+            day_of_week: day.day_of_week,
+            is_ai_on_all_day: true,
+            is_custom: false,
+            start_time: null,
+            end_time: null,
+          };
+        }
+
+        // For "custom", keep time values
+        return day;
+      });
+
+      await postAISchedule(Number(userDetails?.company_id), formattedSchedule);
+      setSnackbar({
+        open: true,
+        message: "AI schedule saved successfully",
+        severity: "success",
+      });
+      setSettingsModal(false);
+    } catch (error) {
+      console.error("Error saving AI schedule:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to save AI schedule",
+        severity: "error",
+      });
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  // Get current option value for radio buttons
+  const getScheduleOptionValue = (day: IAISchedule) => {
+    if (day.is_ai_on_all_day) return "allDay";
+    if (day.is_custom) return "custom";
+    return "off";
+  };
+
+  const onSubmit = async (data: HelpFormData) => {
+    setIsLoading(true);
+    try {
+      await postUserQuery(data.email, data.issue);
+      reset({
+        email: "",
+        issue: "",
+      });
+      setHelpModal(false);
+      setSnackbar({
+        open: true,
+        message: "Message sent successfully",
+        severity: "success",
+      });
+    } catch (error) {
+      console.log(error);
+      setSnackbar({
+        open: true,
+        message: "Message sent failed",
+        severity: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleScheduleOptionChange = (day: string, value: string) => {
+    setSchedule((prev) =>
+      prev.map((item) => {
+        if (item.day_of_week === day) {
+          return {
+            ...item,
+            is_ai_on_all_day: value === "allDay",
+            is_custom: value === "custom",
+            start_time: value === "custom" ? item.start_time : "hh:mm",
+            end_time: value === "custom" ? item.end_time : "hh:mm",
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Handle time change for start and end times
+  const handleTimeChange = (
+    day: string,
+    field: "start_time" | "end_time",
+    value: dayjs.Dayjs | null
+  ) => {
+    if (!value) return;
+
+    const timeString = value.format("HH:mm:00");
+
+    // Clear validation error when a valid time is selected
+    if (validationErrors[day]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[day];
+        return newErrors;
+      });
+    }
+
+    setSchedule((prev) =>
+      prev.map((item) => {
+        if (item.day_of_week === day) {
+          return {
+            ...item,
+            [field]: timeString,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  const closeSettingsModal = () => {
+    setSettingsModal(false);
+    setSchedule(
+      weekDays.map((day) => ({
+        day_of_week: day,
+        is_ai_on_all_day: false,
+        is_custom: false,
+        start_time: "hh:mm",
+        end_time: "hh:mm",
+      }))
+    );
   };
   const drawerStyles = {
     width: open ? drawerWidth : isMobile ? 0 : 80,
@@ -127,8 +350,8 @@ const Sidebar = ({
         text === "Get Help"
           ? () => setHelpModal(true)
           : text === "Settings"
-          ? () => setSettingsModal(true)
-          : closeDrawerOnMobile
+            ? () => setSettingsModal(true)
+            : closeDrawerOnMobile
       }
     >
       {iconSrc && <img alt={"logo"} src={iconSrc} />}
@@ -255,8 +478,10 @@ const Sidebar = ({
               confirmButtonType="primary"
               confirmText="Send"
               onConfirm={handleSubmit(onSubmit)}
+              loading={isLoading}
+              disabled={isLoading}
               title="Help"
-              // hideCloseIcon
+            // hideCloseIcon
             >
               <Box>
                 <Typography variant="bodyMediumMedium" color="grey.600">
@@ -290,34 +515,134 @@ const Sidebar = ({
               cancelText="Cancel"
               confirmButtonType="primary"
               confirmText="Save"
-              onClose={() => setSettingsModal(false)}
-              onConfirm={() => setSettingsModal(false)}
+              onClose={closeSettingsModal}
+              onConfirm={handleSubmitAISchedule}
+              loading={settingsLoading}
+              disabled={settingsLoading}
             >
               <Box>
-               
                 <Typography variant="bodyMediumMedium" mb={2} color="grey.600">
                   Set the hours the assistant will be active on your phone line
                 </Typography>
-                {weekDays.map((day) => (
+                {schedule.map((daySchedule) => (
                   <Box
-                    key={day}
+                    key={daySchedule.day_of_week}
                     display={"flex"}
                     alignItems={"center"}
                     justifyContent={"space-between"}
-                    gap={5}
+                    gap={2}
                   >
                     <Typography
-                      variant="bodyLargeMedium"
+                      variant="bodySmallMedium"
                       py={1}
                       minWidth={"70px"}
                     >
-                      {day}
+                      {daySchedule.day_of_week}
                     </Typography>
-                    <Box py={1}>
+                    <FormControl>
+                      <Box display={"flex"} gap={2}>
+                        <RadioGroup
+                          row
+                          sx={{
+                            flexWrap: "nowrap",
+                          }}
+                          aria-labelledby="demo-radio-buttons-group-label"
+                          value={getScheduleOptionValue(daySchedule)}
+                          onChange={(e) =>
+                            handleScheduleOptionChange(
+                              daySchedule.day_of_week,
+                              e.target.value
+                            )
+                          }
+                          name={`radio-buttons-${daySchedule.day_of_week}`}
+                        >
+                          <FormControlLabel
+                            value="off"
+                            control={<Radio size="small" />}
+                            label={
+                              <Typography
+                                variant="bodySmallMedium"
+                                color="textSecondary"
+                              >
+                                Off
+                              </Typography>
+                            }
+                          />
+                          <FormControlLabel
+                            value="allDay"
+                            control={<Radio size="small" />}
+                            label={
+                              <Typography
+                                variant="bodySmallMedium"
+                                color="textSecondary"
+                              >
+                                All Day
+                              </Typography>
+                            }
+                          />
+                          <FormControlLabel
+                            value="custom"
+                            control={<Radio size="small" />}
+                            label={
+                              <Typography
+                                variant="bodySmallMedium"
+                                color="textSecondary"
+                              >
+                                Custom
+                              </Typography>
+                            }
+                          />
+                        </RadioGroup>
+                      </Box>
+                    </FormControl>
+                    <Box py={1} maxWidth={"250px"}>
                       <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <Box display={"flex"} gap={2}>
-                          <TimePicker sx={{ width: "50%" }}  />
-                          <TimePicker sx={{ width: "50%" }} />
+                        <Box
+                          display={"flex"}
+                          flexDirection="column"
+                          width="100%"
+                        >
+                          <Box display={"flex"} justifyContent={"end"} gap={2}>
+                            <TimePicker
+                              sx={{ width: "50%" }}
+                              format="HH:mm"
+                              disabled={!daySchedule.is_custom}
+                              value={
+                                daySchedule.start_time
+                                  ? dayjs(daySchedule.start_time, "HH:mm:ss")
+                                  : null
+                              }
+                              onChange={(newValue) =>
+                                handleTimeChange(
+                                  daySchedule.day_of_week,
+                                  "start_time",
+                                  newValue
+                                )
+                              }
+                            />
+                            <TimePicker
+                              sx={{ width: "50%" }}
+                              format="HH:mm"
+                              disabled={!daySchedule.is_custom}
+                              value={
+                                daySchedule.end_time
+                                  ? dayjs(daySchedule.end_time, "HH:mm:ss")
+                                  : null
+                              }
+                              onChange={(newValue) =>
+                                handleTimeChange(
+                                  daySchedule.day_of_week,
+                                  "end_time",
+                                  newValue
+                                )
+                              }
+                            />
+                          </Box>
+                          {validationErrors[daySchedule.day_of_week] && (
+                            <Typography color="error" variant="caption">
+                              {validationErrors[daySchedule.day_of_week]}
+                            </Typography>
+                          )}
                         </Box>
                       </LocalizationProvider>
                     </Box>
@@ -325,6 +650,14 @@ const Sidebar = ({
                 ))}
               </Box>
             </CommonDialog>
+            <CommonSnackbar
+              open={snackbar.open}
+              message={snackbar.message}
+              severity={snackbar.severity as AlertColor}
+              onClose={() =>
+                setSnackbar({ open: false, message: "", severity: "success" })
+              }
+            />
             <Box display={"flex"} justifyContent={"space-between"} px={2}>
               <CommonLink to={externalLinks.termsOfService}>Terms</CommonLink>|
               <CommonLink to={externalLinks.privacyPolicy}>Privacy</CommonLink>
