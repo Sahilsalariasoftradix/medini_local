@@ -11,10 +11,18 @@ import { useAuthHook } from "../../../hooks/useAuth";
 import CommonSnackbar from "../../common/CommonSnackbar";
 import { useAuth } from "../../../store/AuthContext";
 import { MuiPhone } from "../../Auth/SignUp/CustomPhoneInput";
+import { IContact } from "../../../utils/Interfaces";
+import { updateContact } from "../../../firebase/AuthService";
 
 const contactSchema = z.object({
-  firstName: z.string().min(1, "First name is required").max(50, "First name must be less than 50 characters"),
-  lastName: z.string().min(1, "Last name is required").max(50, "Last name must be less than 50 characters"),
+  firstName: z
+    .string()
+    .min(1, "First name is required")
+    .max(50, "First name must be less than 50 characters"),
+  lastName: z
+    .string()
+    .min(1, "Last name is required")
+    .max(50, "Last name must be less than 50 characters"),
   email: z
     .string()
     .min(1, { message: formErrorMessage.email.required }) // Checks if the field is empty
@@ -27,10 +35,13 @@ const AddContact = ({
   openDialog,
   setOpenDialog,
   fetchContacts, // Add this as a prop to call fetchContacts
-}: {
+  contact,
+}: // formType,
+{
   openDialog: boolean;
   setOpenDialog: React.Dispatch<React.SetStateAction<boolean>>;
   fetchContacts: () => void; // This will be the fetchContacts function passed from parent
+  contact?: IContact;
 }) => {
   const {
     setSnackbarOpen,
@@ -50,13 +61,13 @@ const AddContact = ({
   } = useForm<ContactData>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
+      firstName: contact?.firstName || "",
+      lastName: contact?.lastName || "",
+      email: contact?.email || "",
     },
   });
   const { userDetails } = useAuth();
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(contact?.phone || "");
   const [formSubmitted, setFormSubmitted] = useState(false);
 
   const onSubmit: SubmitHandler<ContactData> = async (data) => {
@@ -77,6 +88,7 @@ const AddContact = ({
       setTimeout(() => {
         setOpenDialog(false);
         reset();
+        setPhone("");
         setIsLoading(false);
         setSnackbarOpen(false);
       }, 500);
@@ -94,6 +106,36 @@ const AddContact = ({
     }
   };
 
+  const editContact = async (data: ContactData) => {
+    setIsLoading(true);
+    try {
+      await updateContact({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: phone,
+        id: contact?.id || "",
+      });
+      setSnackbarOpen(true);
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Contact updated successfully!");
+      setTimeout(() => {
+        setOpenDialog(false);
+        reset();
+        setPhone("");
+        setIsLoading(false);
+        setSnackbarOpen(false);
+      }, 500);
+      fetchContacts();
+    } catch (error: any) {
+      setSnackbarMessage("Failed to update contact");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      console.error("Error updating contact:", error);
+      setIsLoading(false);
+    }
+  };
+
   return (
     <>
       <CommonDialog
@@ -103,10 +145,10 @@ const AddContact = ({
           reset();
         }}
         confirmButtonType="primary"
-        title="New Contact"
-        confirmText="Confirm"
+        title={contact ? "Edit Contact" : "New Contact"}
+        confirmText={contact ? "Update" : "Confirm"}
         cancelText="Cancel"
-        onConfirm={handleSubmit(onSubmit)}
+        onConfirm={handleSubmit(contact ? editContact : onSubmit)}
         loading={isSubmitting}
         disabled={isSubmitting}
       >

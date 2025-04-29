@@ -192,6 +192,7 @@ export interface IGetAvailability {
 // Interface for GetAvailability extends from IGetRangeData
 export type TGetBooking = IGetAvailability;
 export interface IContact {
+  id: string;
   email: string;
   firstName: string;
   lastName: string;

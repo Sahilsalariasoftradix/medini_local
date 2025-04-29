@@ -103,20 +103,20 @@ const Sidebar = ({
   const [validationErrors, setValidationErrors] = useState<{
     [key: string]: string;
   }>({});
-  console.log(schedule);
+  // console.log(schedule);
   useEffect(() => {
     const fetchSchedule = async () => {
       if (!userDetails?.company_id) return;
       const response = await getAISchedule(Number(userDetails?.company_id));
       setSchedule(
         response?.config ??
-        weekDays.map((day) => ({
-          day_of_week: day,
-          is_ai_on_all_day: false,
-          is_custom: false,
-          start_time: "hh:mm",
-          end_time: "hh:mm",
-        }))
+          weekDays.map((day) => ({
+            day_of_week: day,
+            is_ai_on_all_day: false,
+            is_custom: false,
+            start_time: "hh:mm",
+            end_time: "hh:mm",
+          }))
       );
     };
     fetchSchedule();
@@ -350,8 +350,8 @@ const Sidebar = ({
         text === "Get Help"
           ? () => setHelpModal(true)
           : text === "Settings"
-            ? () => setSettingsModal(true)
-            : closeDrawerOnMobile
+          ? () => setSettingsModal(true)
+          : closeDrawerOnMobile
       }
     >
       {iconSrc && <img alt={"logo"} src={iconSrc} />}
@@ -467,6 +467,12 @@ const Sidebar = ({
               socketData?.length || "",
               routes.sidebar.messages.link
             )}
+             {renderListItem(
+              undefined,
+              "Contacts",
+              undefined,
+              routes.sidebar.contacts.link
+            )}
           </Box>
           <Box>
             {renderListItem(SidebarIcons.settings, "Settings", undefined, "#")}
@@ -481,7 +487,7 @@ const Sidebar = ({
               loading={isLoading}
               disabled={isLoading}
               title="Help"
-            // hideCloseIcon
+              // hideCloseIcon
             >
               <Box>
                 <Typography variant="bodyMediumMedium" color="grey.600">

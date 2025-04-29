@@ -9,11 +9,14 @@ import {
   signOut,
 } from "firebase/auth";
 import {
+  addDoc,
   collection,
   doc,
   getDoc,
   getDocs,
   getFirestore,
+  onSnapshot,
+  orderBy,
   query,
   runTransaction,
   serverTimestamp,
@@ -21,6 +24,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  deleteDoc,
 } from "firebase/firestore";
 import { firebaseAuth, firebaseFirestore } from "./BaseConfig";
 import {
@@ -42,6 +46,7 @@ import { IContact, IUserDetails } from "../utils/Interfaces";
 import { staticText } from "../utils/staticText";
 import {
   EnFirebaseCollections,
+  EnMessageSender,
   EnOnboardingStatus,
   EnSocialLogin,
   EnVerifiedStatus,
@@ -177,7 +182,9 @@ export const getReasons = async () => {
 };
 //* Function to fetch all contacts from the Firestore 'contacts' collection
 export const getContactsByUserId = async (
-  userId: string
+  userId: string,
+  //@ts-ignore
+  isTable?: boolean
 ): Promise<IContact[]> => {
   const db = getFirestore();
   const contactsCollection = collection(db, EnFirebaseCollections.CONTACTS);
@@ -192,6 +199,7 @@ export const getContactsByUserId = async (
 
     // Map through the documents and return the filtered contacts
     const contactsList = snapshot.docs.map((doc) => ({
+      id: doc.id, // Add the document ID to each contact
       ...doc.data(), // Spread document data
     }));
 
@@ -445,5 +453,260 @@ export const signInWithApple = async (setUserDetails: any): Promise<void> => {
   } catch (error: any) {
     console.error("Apple Sign-In Failed:", error.message);
     throw new Error(getAuthErrorMessage(error.code));
+  }
+};
+
+/**
+ * Sends a new message to a specific patient's chat.
+ */
+export const sendMessageToPatient = async (
+  patientName: string,
+  messageText: string
+) => {
+  try {
+    const messageCollectionRef = collection(
+      firebaseFirestore,
+      EnFirebaseCollections.MESSAGES,
+      "141",
+      EnFirebaseCollections.PATIENTS,
+      patientName,
+      EnFirebaseCollections.MESSAGE
+    );
+    const docRef = await addDoc(messageCollectionRef, {
+      message: messageText,
+      sender: EnMessageSender.DOCTOR,
+      timestamp: new Date(),
+    });
+    console.log(":white_check_mark: Message sent successfully");
+    return docRef.id;
+  } catch (error) {
+    console.error(
+      `:x: Error sending message to patient ${patientName}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+/**
+ * Subscribes to messages for a specific patient's chat.
+ */
+export const subscribeToPatientMessages = (
+  patientName: string,
+  callback: any
+) => {
+  const messageCollectionRef = collection(
+    firebaseFirestore,
+    EnFirebaseCollections.MESSAGES,
+    "141",
+    "patients",
+    patientName,
+    "message"
+  );
+  const q = query(messageCollectionRef, orderBy("timestamp", "desc"));
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      console.log(
+        `:incoming_envelope: Real-time update received for ${patientName}`
+      );
+
+      // Log any changes in this update
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          console.log("New message:", change.doc.data());
+        }
+        if (change.type === "modified") {
+          console.log("Modified message:", change.doc.data());
+        }
+        if (change.type === "removed") {
+          console.log("Removed message:", change.doc.data());
+        }
+      });
+
+      const messages = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate(),
+      }));
+
+      callback(messages);
+    },
+    (error) => {
+      console.error(
+        `:x: Subscription error for patient ${patientName}:`,
+        error
+      );
+    }
+  );
+
+  return unsubscribe;
+};
+
+/**
+ * Retrieves the list of patients and their latest messages.
+ */
+export const getPatientsWithLatestMessage = async () => {
+  try {
+    const patientsCollectionRef = collection(
+      firebaseFirestore,
+      EnFirebaseCollections.MESSAGES,
+      "141",
+      "patients"
+    );
+    const patientsSnapshot = await getDocs(patientsCollectionRef);
+
+    console.log(
+      `:open_file_folder: Found ${patientsSnapshot.docs.length} patients`
+    );
+
+    const patients = {};
+
+    for (const patientDoc of patientsSnapshot.docs) {
+      const patientName = patientDoc.id;
+      console.log(`\n:bust_in_silhouette: Processing patient: ${patientName}`);
+
+      try {
+        const messageCollectionRef = collection(
+          firebaseFirestore,
+          EnFirebaseCollections.MESSAGES,
+          "141",
+          "patients",
+          patientName,
+          "message"
+        );
+        const messagesSnapshot = await getDocs(
+          query(messageCollectionRef, orderBy("timestamp", "desc"))
+        );
+
+        const messages = messagesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          timestamp: doc.data().timestamp?.toDate(),
+          message: doc.data().message,
+        }));
+
+        if (messages.length > 0) {
+          //@ts-ignore
+          patients[patientName] = {
+            details: { name: patientName },
+            messages: messages,
+          };
+        } else {
+          //@ts-ignore
+            patients[patientName] = {
+            details: { name: patientName },
+            messages: [],
+          };
+        }
+      } catch (error) {
+        console.error(
+          `:x: Error fetching messages for patient ${patientName}:`,
+          error
+        );
+        //@ts-ignore
+        patients[patientName] = {
+          details: { name: patientName },
+          messages: [],
+        };
+      }
+    }
+
+    return patients;
+  } catch (error) {
+    console.error(":x: Error fetching patients:", error);
+    return {};
+  }
+};
+
+/**
+ * Subscribes to updates for all patients.
+ */
+export const subscribeToDoctorMessages = (callback: any) => {
+  // Subscribe to the patients collection for new patient additions
+  const patientsCollectionRef = collection(
+    firebaseFirestore,
+    EnFirebaseCollections.MESSAGES,
+    "141",
+    "patients"
+  );
+  const patientSubscriptions = new Map();
+
+  // Main subscription to watch for patient collection changes
+  const unsubscribePatients = onSnapshot(patientsCollectionRef, (snapshot) => {
+    console.log(":satellite_antenna: Patient collection changed");
+
+    // Handle patient collection changes
+    snapshot.docChanges().forEach((change) => {
+      const patientName = change.doc.id;
+
+      if (change.type === "added" || change.type === "modified") {
+        // Remove existing subscription if any
+        if (patientSubscriptions.has(patientName)) {
+          patientSubscriptions.get(patientName)();
+        }
+        // Set up new subscription
+        const unsubscribe = subscribeToPatientMessages(
+          patientName,
+          (messages: any) => {
+            callback((currentPatients: any) => ({
+              ...currentPatients,
+              [patientName]: {
+                details: { name: patientName },
+                messages: messages,
+              },
+            }));
+          }
+        );
+
+        patientSubscriptions.set(patientName, unsubscribe);
+      }
+
+      if (change.type === "removed") {
+        console.log(`:x: Removing subscription for patient: ${patientName}`);
+        if (patientSubscriptions.has(patientName)) {
+          patientSubscriptions.get(patientName)();
+          patientSubscriptions.delete(patientName);
+        }
+      }
+    });
+  });
+
+  // Return cleanup function
+  return () => {
+    unsubscribePatients();
+    patientSubscriptions.forEach((unsubscribe) => unsubscribe());
+    patientSubscriptions.clear();
+  };
+};
+
+//* Function to delete a contact from Firestore
+export const deleteContactById = async (contactId: string): Promise<void> => {
+  try {
+    const db = getFirestore();
+    const contactRef = doc(db, EnFirebaseCollections.CONTACTS, contactId);
+    await deleteDoc(contactRef);
+  } catch (error) {
+    console.error("Error deleting contact:", error);
+    throw new Error("Failed to delete contact");
+  }
+};
+
+//* Function to update a contact in Firestore
+export const updateContact = async (contact: IContact): Promise<void> => {
+  try {
+    const db = getFirestore();
+    const contactRef = doc(db, EnFirebaseCollections.CONTACTS, contact.id);
+
+    await updateDoc(contactRef, {
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      email: contact.email,
+      phone: contact.phone,
+    });
+  } catch (error) {
+    console.error("Error updating contact:", error);
+    throw new Error("Failed to update contact");
   }
 };

@@ -14,6 +14,9 @@ export enum EnFirebaseCollections {
   REASONS = "reasons",
   APPOINTMENTS = "appointments",
   CONTACTS = "contacts",
+  MESSAGES = "messages",
+  PATIENTS = "patients",
+  MESSAGE='message'
 }
 export enum EnAppointmentOptions {
   APPOINTMENT_1 = "15",
@@ -142,4 +145,13 @@ export enum EnGetBookingRange {
 export enum EnOTPType {
   NEW = "new",
   EXISTING = "existing",
+}
+export enum EnMessageSender {
+  MEDINI = "medini",
+  PATIENT = "patient",
+  DOCTOR = "doctor",
+}
+export enum EnFormContactType {
+  ADD = "add",
+  EDIT = "edit",
 }

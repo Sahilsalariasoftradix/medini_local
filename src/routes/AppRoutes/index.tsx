@@ -23,6 +23,7 @@ import NormalLayout from "../../layouts/NormalLayout";
 import TermsOfServicePage from "../../pages/TermsOfService";
 import Messages from "../../components/Messages";
 import AppointmentChecker from "../../components/AppointmentChecker/AppointmentChecker";
+import Contacts from "../../pages/contacts";
 
 const AppRoutes: React.FC = () => {
   const { loading } = useAuth();
@@ -78,6 +79,10 @@ const AppRoutes: React.FC = () => {
               element={<CallCenter />}
             />
             <Route path={routes.sidebar.bookings.link} element={<Booking />} />
+            <Route
+              path={routes.sidebar.contacts.link}
+              element={<Contacts />}
+            />
           </Route>
         </Route>
 

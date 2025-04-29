@@ -28,6 +28,7 @@ export const routes = {
     messages: { name: "Messages", link: "/messages" },
     settings: { name: "Settings", link: "/settings" },
     help: { name: "Help", link: "/help" },
+    contacts: { name: "Contacts", link: "/contacts" },
   },
   error: {
     notFound: "*",

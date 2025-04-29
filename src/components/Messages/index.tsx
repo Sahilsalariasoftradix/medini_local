@@ -1,6 +1,12 @@
-import { Avatar, Box, Typography, IconButton } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Typography,
+  IconButton,
+  CircularProgress,
+} from "@mui/material";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import CommonButton from "../common/CommonButton";
 import emojiIcon from "../../assets/icons/mood-smile.svg";
 import file from "../../assets/icons/link.svg";
@@ -10,6 +16,13 @@ import search from "../../assets/icons/Search.svg";
 import CommonTextField from "../common/CommonTextField";
 import useDebounce from "../../hooks/useDebounce";
 import { useAuth } from "../../store/AuthContext";
+import {
+  getPatientsWithLatestMessage,
+  sendMessageToPatient,
+  subscribeToDoctorMessages,
+} from "../../firebase/AuthService";
+import { formatDate, stringToColor } from "../../utils/common";
+import { EnMessageSender } from "../../utils/enums";
 const sidebarStyles = {
   minWidth: 350,
   borderRight: "1px solid #E2E8F0",
@@ -56,99 +69,91 @@ const messageAreaStyles = {
     scrollbarColor: "rgba(0,0,0,0.2) transparent",
   },
 };
-const stringToColor = (str: string) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  let color = "#";
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xff;
-    color += ("00" + value.toString(16)).slice(-2);
-  }
-  return color;
-};
+
 
 const Messages = () => {
   const [searchValue, setSearchValue] = useState<string>("");
-  const [selectedContact, setSelectedContact] = useState<any>(null);
-  const [messageHistory, setMessageHistory] = useState<{
-    [contactId: string]: any[];
-  }>({});
+  // const [messageHistory, setMessageHistory] = useState<{
+  //   [contactId: string]: any[];
+  // }>({});
+  const [patients, setPatients] = useState<any>({});
+  console.log(patients);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  console.log(selectedPatient);
+  const [loading, setLoading] = useState(true);
+  const [loadingSendMessage, setLoadingSendMessage] = useState(false);
+  //@ts-ignore
+  const [error, setError] = useState<string | null>(null);
+  const [newMessage, setNewMessage] = useState("");
+  const messageAreaRef = useRef<HTMLDivElement>(null);
+
+  // Load initial data
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const initialPatients = await getPatientsWithLatestMessage();
+        setPatients(initialPatients);
+        if (Object.keys(initialPatients).length > 0) {
+          setSelectedPatient(Object.keys(initialPatients)[0]);
+        }
+      } catch (err: any) {
+        console.error("❌ Error loading initial data:", err);
+        setError(err.message || "Failed to load initial data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+  // Set up real-time subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToDoctorMessages((updaterFn: any) => {
+      setPatients((current: any) => {
+        const updated = updaterFn(current);
+        return updated;
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const handlePatientSelect = useCallback((patientId: string) => {
+    setSelectedPatient(patientId);
+  }, []);
+
+  const handleSendMessage = async (e: any) => {
+  setLoadingSendMessage(true)
+    e.preventDefault();
+    if (!selectedPatient || !newMessage.trim()) return;
+
+  
+    try {
+      await sendMessageToPatient(selectedPatient.details?.name, newMessage.trim());
+      setNewMessage("");
+    } catch (err) {
+      console.error("❌ Error sending message:", err);
+      setError("Failed to send message");
+    } finally {
+      setLoadingSendMessage(false);
+    }
+  };
+  const patientIds = Object.keys(patients);
 
   //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
+  //@ts-ignore
   const { socketData, socket, message, setMessage, userDetails } = useAuth();
   console.log(socketData);
-  const handleSend = () => {
-    if (
-      message.trim() &&
-      socket &&
-      socket.readyState === WebSocket.OPEN &&
-      selectedContact
-    ) {
-      // Create message payload
-      const messagePayload = {
-        type: "message",
-        content: message,
-        recipient: selectedContact?.id,
-        name: selectedContact?.first_name,
-      };
 
-      // Create a message object for the UI
-      const newMessage = {
-        id: Date.now().toString(),
-        content: message,
-        sender: "You",
-        isUser: true,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      // Update message history
-      setMessageHistory((prev) => ({
-        ...prev,
-        [selectedContact.booking_id]: [
-          ...(prev[selectedContact.booking_id] || []),
-          newMessage,
-        ],
-      }));
-
-      // Send the message
-      socket.send(JSON.stringify(messagePayload));
-      console.log("Sending message:", message);
-      setMessage("");
+  // Scroll to bottom of messages when messages change
+  useEffect(() => {
+    if (messageAreaRef.current) {
+      messageAreaRef.current.scrollTop = messageAreaRef.current.scrollHeight;
     }
-  };
-
-  const handleContactSelect = (contact: any) => {
-    setSelectedContact(contact);
-
-    // Check if there are no messages for this contact yet
-    if (
-      !messageHistory[contact.booking_id] ||
-      messageHistory[contact.booking_id].length === 0
-    ) {
-      // Add the initial booking message
-      const bookingMessage = {
-        id: Date.now().toString(),
-        content: "booked", // Special marker to trigger the custom formatting
-        sender: contact.first_name,
-        isUser: false,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      setMessageHistory((prev) => ({
-        ...prev,
-        [contact.booking_id]: [bookingMessage],
-      }));
-    }
-  };
+  }, [selectedPatient?.messages]);
 
   return (
     <Box
@@ -171,60 +176,52 @@ const Messages = () => {
 
         {/* Contact list items */}
         <Box>
-          {socketData &&
-            socketData.length > 0 &&
-            socketData
-              .filter((contact: any) =>
-                contact.first_name
-                  .toLowerCase()
-                  .includes(debouncedSearchValue.toLowerCase())
-              )
-              .map((contact: any) => (
-                <Box
-                  key={contact.booking_id}
+          {patients &&
+            patientIds.length > 0 &&
+            Object.values(patients).map((contact: any, index: number) => (
+              <Box
+                key={index}
+                sx={{
+                  display: "flex",
+                  p: 2,
+                  borderBottom: "1px solid #f5f5f5",
+                  cursor: "pointer",
+                  "&:hover": {
+                    bgcolor: "rgba(0, 0, 0, 0.04)",
+                  },
+                  // Highlight active chat based on selected contact
+                  ...(selectedPatient === contact.details.name
+                    ? { bgcolor: "rgba(0, 0, 0, 0.04)" }
+                    : {}),
+                }}
+                onClick={() => handlePatientSelect(contact)}
+              >
+                <Avatar
                   sx={{
-                    display: "flex",
-                    p: 2,
-                    borderBottom: "1px solid #f5f5f5",
-                    cursor: "pointer",
-                    "&:hover": {
-                      bgcolor: "rgba(0, 0, 0, 0.04)",
-                    },
-                    // Highlight active chat based on selected contact
-                    ...(selectedContact?.booking_id === contact.booking_id
-                      ? { bgcolor: "rgba(0, 0, 0, 0.04)" }
-                      : {}),
+                    bgcolor: stringToColor(contact.details.name),
+                    width: 40,
+                    height: 40,
                   }}
-                  onClick={() => handleContactSelect(contact)}
                 >
-                  <Avatar
+                  {contact.details.name.charAt(0)}
+                  {contact.details.name.charAt(0)}
+                </Avatar>
+                <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
+                  <Box
                     sx={{
-                      bgcolor: stringToColor(
-                        contact.first_name + contact.last_name
-                      ),
-                      width: 40,
-                      height: 40,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                     }}
                   >
-                    {contact.first_name.charAt(0)}
-                    {contact.last_name.charAt(0)}
-                  </Avatar>
-                  <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Typography variant="bodyLargeExtraBold" noWrap>
-                        {contact.first_name} {contact.last_name}
-                      </Typography>
-                      <Typography variant="bodyMediumMedium">
-                        {contact.start_time}
-                      </Typography>
-                    </Box>
-                    {/* <Box
+                    <Typography variant="bodyLargeExtraBold" noWrap>
+                      {contact.details.name}
+                    </Typography>
+                    <Typography variant="bodyMediumMedium">
+                      {formatDate(contact.messages[0]?.timestamp)}
+                    </Typography>
+                  </Box>
+                  {/* <Box
                     sx={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -262,10 +259,10 @@ const Messages = () => {
                       </Box>
                     )}
                   </Box> */}
-                  </Box>
                 </Box>
-              ))}
-          {socketData && socketData.length === 0 && (
+              </Box>
+            ))}
+          {patients && Object.keys(patients).length === 0 && (
             <Box
               sx={{
                 display: "flex",
@@ -279,11 +276,23 @@ const Messages = () => {
               </Typography>
             </Box>
           )}
+          {loading && !patients && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "calc(100vh - 320px)",
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          )}
         </Box>
       </Box>
 
       {/* Right side - chat area */}
-      {selectedContact ? (
+      {selectedPatient ? (
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           {/* Chat header */}
           <Box
@@ -296,26 +305,24 @@ const Messages = () => {
             }}
           >
             <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>
-              {selectedContact.first_name.charAt(0)}{" "}
-              {selectedContact.last_name.charAt(0)}
+              {selectedPatient.details?.name.charAt(0)}
             </Avatar>
             <Typography variant="subtitle1" fontWeight="bold">
-              {selectedContact.first_name}
-              {selectedContact.last_name}
+              {selectedPatient.details?.name}
             </Typography>
           </Box>
 
           {/* Messages area */}
-          <Box sx={messageAreaStyles}>
-            {selectedContact &&
-              (messageHistory[selectedContact.booking_id]?.length > 0 ? (
-                messageHistory[selectedContact.booking_id].map((msg) => (
+          <Box sx={messageAreaStyles} ref={messageAreaRef}>
+            {selectedPatient &&
+              (selectedPatient.messages?.length > 0 ? (
+                [...selectedPatient.messages].reverse().map((msg: any) => (
                   <Box
                     key={msg.id}
                     sx={{
                       display: "flex",
                       flexDirection: "column",
-                      alignItems: msg.isUser ? "flex-end" : "flex-start",
+                      alignItems: msg.sender !== EnMessageSender.MEDINI ? "flex-end" : "flex-start",
                       mb: 2,
                     }}
                   >
@@ -323,7 +330,10 @@ const Messages = () => {
                       sx={{
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: msg.isUser ? "flex-end" : "flex-start",
+                        justifyContent:
+                          msg.sender !== EnMessageSender.MEDINI
+                            ? "flex-end"
+                            : "flex-start",
                       }}
                     >
                       {/* {!msg.isUser && (
@@ -343,29 +353,34 @@ const Messages = () => {
                       )} */}
                       <Box
                         sx={{
-                          maxWidth: "70%",
+                          maxWidth: "100%",
                           p: 1.5,
                           borderRadius: "16px",
-                          borderBottomRightRadius: msg.isUser ? 0 : "16px",
-                          borderBottomLeftRadius: msg.isUser ? "16px" : 0,
-                          bgcolor: msg.isUser ? "primary.main" : "grey.100",
-                          color: msg.isUser ? "white" : "inherit",
+                          borderBottomRightRadius:
+                            msg.sender !== EnMessageSender.MEDINI ? 0 : "16px",
+                          borderBottomLeftRadius:
+                            msg.sender !== EnMessageSender.MEDINI ? "16px" : 0,
+                          bgcolor:
+                            msg.sender !== EnMessageSender.MEDINI
+                              ? "primary.main"
+                              : "grey.100",
+                          color:
+                            msg.sender !== EnMessageSender.MEDINI ? "white" : "inherit",
                         }}
                       >
-                        {!msg.isUser && msg.content.includes("booked") ? (
+                        {msg.sender !== EnMessageSender.MEDINI ? (
                           <Typography variant="body1">
-                            Hey! I just booked this patient{" "}
-                            {selectedContact.first_name}{" "}
-                            {selectedContact.last_name} for an appointment on{" "}
-                            {selectedContact.date} at{" "}
-                            {selectedContact.start_time} o'clock with{" "}
-                            {userDetails?.firstName}
+                            {/* Hey! I just booked this patient{" "}
+                            {selectedPatient.message} for an appointment on{" "}
+                            {selectedPatient.message} at{" "}
+                            {selectedPatient.message} o'clock with{" "} */}
+                            {msg.message}
                           </Typography>
                         ) : (
-                          <Typography variant="body1">{msg.content}</Typography>
+                          <Typography variant="body1">{msg.message}</Typography>
                         )}
                       </Box>
-                      {msg.isUser && (
+                      {msg.sender !== EnMessageSender.MEDINI && (
                         <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
                           <img src={share} alt="share" />
                         </IconButton>
@@ -378,14 +393,16 @@ const Messages = () => {
                         alignItems: "center",
                         mt: 0.5,
                         gap: 1,
-                        ml: msg.isUser ? 0 : 0,
+                        ml: msg.sender !== EnMessageSender.MEDINI ? 0 : 0,
                       }}
                     >
                       <Typography variant="bodySmallExtraBold" ml={1}>
-                        {msg.isUser ? "You" : selectedContact.first_name}
+                        {msg.sender !== EnMessageSender.MEDINI
+                          ? "You"
+                          : selectedPatient.message}
                       </Typography>
                       <Typography variant="bodySmallMedium" color="grey.500">
-                        {msg.timestamp}
+                        {formatDate(msg?.timestamp)}
                       </Typography>
                     </Box>
                   </Box>
@@ -410,9 +427,12 @@ const Messages = () => {
           <Box sx={{ px: 6 }}>
             <CommonTextField
               placeholder="Type a message..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSend()}
+              value={newMessage}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                // console.log(e.target.value, "ll");
+              }}
+              onKeyPress={(e) => e.key === "Enter" && handleSendMessage(e)}
             />
           </Box>
           <Box
@@ -438,8 +458,10 @@ const Messages = () => {
 
             <CommonButton
               text="Send"
-              onClick={handleSend}
-              disabled={!message.trim()}
+              // onClick={handleSend}
+              disabled={!newMessage.trim() || loadingSendMessage}
+              loading={loadingSendMessage}
+              onClick={handleSendMessage}
               sx={{ width: "150px" }}
             />
           </Box>

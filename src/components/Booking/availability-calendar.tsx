@@ -864,7 +864,7 @@ export default function AvailabilityCalendar() {
             horizontal: "center",
           }}
         >
-          <Box sx={{ p: 2 }}>
+          <Box sx={{ p: 0}}>
             <DatePicker
               selectsRange={true}
               startDate={startDate}
