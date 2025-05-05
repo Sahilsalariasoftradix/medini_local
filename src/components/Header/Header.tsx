@@ -23,7 +23,7 @@ import CommonDialog from "../common/CommonDialog";
 import deleteIcon from "../../assets/icons/delete-tr.svg";
 import editIcon from "../../assets/icons/edit-table.svg";
 import AIEnabled from "../../assets/icons/AI-Enabled.svg";
-import AIPaused from "../../assets/icons/AI-Paused.svg";
+// import AIPaused from "../../assets/icons/AI-Paused.svg";
 import AIDisabled from "../../assets/icons/AI-Disabled.svg";
 import { EnAIStatus } from "../../utils/enums";
 import CommonTextField from "../common/CommonTextField";
@@ -32,19 +32,19 @@ const AIStatus = () => [
   {
     Icon: AIEnabled,
     Status: EnAIStatus.ENABLED,
-    Text: "AI Enabled",
+    Text: "Enable AI",
     Description: "Ai is active",
   },
-  {
-    Icon: AIPaused,
-    Status: EnAIStatus.PAUSED,
-    Text: "AI Paused",
-    Description: "Ai paused until tomorrow",
-  },
+  // {
+  //   Icon: AIPaused,
+  //   Status: EnAIStatus.PAUSED,
+  //   Text: "AI Paused",
+  //   Description: "Ai paused until tomorrow",
+  // },
   {
     Icon: AIDisabled,
     Status: EnAIStatus.DISABLED,
-    Text: "AI Disabled",
+    Text: "Disable AI",
     Description: "Ai is off",
   },
 ];
