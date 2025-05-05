@@ -473,6 +473,12 @@ const Sidebar = ({
               undefined,
               routes.sidebar.contacts.link
             )}
+            {renderListItem(
+              undefined,
+              "Events",
+              undefined,
+              routes.sidebar.events.link
+            )}
           </Box>
           <Box>
             {renderListItem(SidebarIcons.settings, "Settings", undefined, "#")}

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { firebaseAuth } from "../firebase/BaseConfig";
 
-import { getUserDetails } from "../firebase/AuthService";
+import { getMessages, getUserDetails } from "../firebase/AuthService";
 import { IBooking } from "../utils/Interfaces";
 
 interface IAuthContextType {
@@ -16,6 +16,8 @@ interface IAuthContextType {
   connectionStatus: "connecting" | "connected" | "disconnected";
   message: string;
   setMessage: (message: string) => void;
+  messages: any[];
+  setMessages: (messages: any[]) => void;
 }
 const AuthContext = createContext<IAuthContextType | undefined>(undefined);
 
@@ -25,9 +27,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(undefined);
+  //@ts-ignore
   const [socketData, setSocketData] = useState<IBooking[]>([]);
+   //@ts-ignore
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<any[]>([]);
   //@ts-ignore
   const [connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected"
@@ -61,82 +66,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   //     throw error;
   //   }
   // };
+  useEffect(() => {
+    if (!userDetails?.user_id) return;
+    const unsubscribe = getMessages(
+      { userId: userDetails.user_id },
+      (messages) => {
+        setMessages(messages);
+      },
+      (error) => {
+        console.error("Error fetching messages:", error);
+      }
+    );
 
-
+    return () => {
+      unsubscribe(); // cleanup on unmount or when user_id changes
+    };
+  }, [userDetails?.user_id]);
 
   const logout = async () => {
     await signOut(firebaseAuth);
   };
 
   // Setup WebSocket connection
-  useEffect(() => {
-    // Create WebSocket connection
-    const ws = new WebSocket(import.meta.env.VITE_MEDINI_WEBSOCKET_URL);
-    setSocket(ws);
-    setConnectionStatus("connecting");
+  // useEffect(() => {
+  //   // Create WebSocket connection
+  //   const ws = new WebSocket(import.meta.env.VITE_MEDINI_WEBSOCKET_URL);
+  //   setSocket(ws);
+  //   setConnectionStatus("connecting");
 
-    // Connection opened
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-      setConnectionStatus("connected");
+  //   // Connection opened
+  //   ws.onopen = () => {
+  //     console.log("WebSocket connected");
+  //     setConnectionStatus("connected");
 
-      // Send user ID when connection is established
-      if (userDetails?.user_id) {
-        const payload = {
-          user_id: userDetails.user_id,
-        };
-        ws.send(JSON.stringify(payload));
-      }
-    };
+  //     // Send user ID when connection is established
+  //     if (userDetails?.user_id) {
+  //       const payload = {
+  //         user_id: userDetails.user_id,
+  //       };
+  //       ws.send(JSON.stringify(payload));
+  //     }
+  //   };
 
-    // Listen for messages
-    ws.onmessage = (event) => {
-      if (event.data) {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Message from server:", data);
-          if (data?.payload) {
-            setSocketData((prevMessages) => {
-              const isDuplicate = prevMessages.some(
-                (msg) =>
-                  msg.booking_id === data.payload.booking_id ||
-                  msg.phone === data.payload.phone
-              );
+  //   // Listen for messages
+  //   ws.onmessage = (event) => {
+  //     if (event.data) {
+  //       try {
+  //         const data = JSON.parse(event.data);
+  //         console.log("Message from server:", data);
+  //         if (data?.payload) {
+  //           setSocketData((prevMessages) => {
+  //             const isDuplicate = prevMessages.some(
+  //               (msg) =>
+  //                 msg.booking_id === data.payload.booking_id ||
+  //                 msg.phone === data.payload.phone
+  //             );
 
-              return isDuplicate
-                ? prevMessages
-                : [...prevMessages, data.payload];
-            });
-          }
-        } catch (error) {
-          console.log("Received non-JSON message:", event.data);
-          // Handle non-JSON messages if needed
-        }
-      }
-    };
+  //             return isDuplicate
+  //               ? prevMessages
+  //               : [...prevMessages, data.payload];
+  //           });
+  //         }
+  //       } catch (error) {
+  //         console.log("Received non-JSON message:", event.data);
+  //         // Handle non-JSON messages if needed
+  //       }
+  //     }
+  //   };
 
-    // Handle errors
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setConnectionStatus("disconnected");
-    };
+  //   // Handle errors
+  //   ws.onerror = (error) => {
+  //     console.error("WebSocket error:", error);
+  //     setConnectionStatus("disconnected");
+  //   };
 
-    // Handle connection closing
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-      setConnectionStatus("disconnected");
-    };
+  //   // Handle connection closing
+  //   ws.onclose = () => {
+  //     console.log("WebSocket connection closed");
+  //     setConnectionStatus("disconnected");
+  //   };
 
-    //* Cleanup function to close socket when component unmounts
-    return () => {
-      if (
-        ws.readyState === WebSocket.OPEN ||
-        ws.readyState === WebSocket.CONNECTING
-      ) {
-        ws.close();
-      }
-    };
-  }, [userDetails?.user_id]); // Reconnect if user ID changes
+  //   //* Cleanup function to close socket when component unmounts
+  //   return () => {
+  //     if (
+  //       ws.readyState === WebSocket.OPEN ||
+  //       ws.readyState === WebSocket.CONNECTING
+  //     ) {
+  //       ws.close();
+  //     }
+  //   };
+  // }, [userDetails?.user_id]);
+  // Reconnect if user ID changes
   return (
     <AuthContext.Provider
       value={{
@@ -150,6 +170,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         connectionStatus,
         message,
         setMessage,
+        messages,
+        setMessages
       }}
     >
       {children}

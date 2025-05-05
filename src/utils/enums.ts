@@ -15,8 +15,7 @@ export enum EnFirebaseCollections {
   APPOINTMENTS = "appointments",
   CONTACTS = "contacts",
   MESSAGES = "messages",
-  PATIENTS = "patients",
-  MESSAGE='message'
+  CUSTOMERS = "customers",
 }
 export enum EnAppointmentOptions {
   APPOINTMENT_1 = "15",
@@ -154,4 +153,9 @@ export enum EnMessageSender {
 export enum EnFormContactType {
   ADD = "add",
   EDIT = "edit",
+}
+export enum EnAIStatus {
+  ENABLED = 0,
+  DISABLED = 1,
+  PAUSED = 2,
 }

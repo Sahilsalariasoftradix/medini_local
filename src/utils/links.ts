@@ -29,6 +29,7 @@ export const routes = {
     settings: { name: "Settings", link: "/settings" },
     help: { name: "Help", link: "/help" },
     contacts: { name: "Contacts", link: "/contacts" },
+    events: { name: "Events", link: "/events" },
   },
   error: {
     notFound: "*",

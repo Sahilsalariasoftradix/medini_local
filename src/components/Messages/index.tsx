@@ -16,12 +16,8 @@ import search from "../../assets/icons/Search.svg";
 import CommonTextField from "../common/CommonTextField";
 import useDebounce from "../../hooks/useDebounce";
 import { useAuth } from "../../store/AuthContext";
-import {
-  getPatientsWithLatestMessage,
-  sendMessageToPatient,
-  subscribeToDoctorMessages,
-} from "../../firebase/AuthService";
-import { formatDate, stringToColor } from "../../utils/common";
+import { sendMessageToPatient } from "../../firebase/AuthService";
+import { stringToColor } from "../../utils/common";
 import { EnMessageSender } from "../../utils/enums";
 const sidebarStyles = {
   minWidth: 350,
@@ -70,16 +66,25 @@ const messageAreaStyles = {
   },
 };
 
-
 const Messages = () => {
+  const { messages } = useAuth();
   const [searchValue, setSearchValue] = useState<string>("");
   // const [messageHistory, setMessageHistory] = useState<{
   //   [contactId: string]: any[];
   // }>({});
-  const [patients, setPatients] = useState<any>({});
-  console.log(patients);
+  // const [patients, setPatients] = useState<any>({});
+  // console.log(patients);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  console.log(selectedPatient);
+
+  // Add effect to set initial selected patient from messages
+  useEffect(() => {
+    if (messages && messages.length > 0 && !selectedPatient) {
+      setSelectedPatient(messages[0]);
+    }
+  }, [messages, selectedPatient]);
+
+  // console.log(selectedPatient);
+  //@ts-ignore
   const [loading, setLoading] = useState(true);
   const [loadingSendMessage, setLoadingSendMessage] = useState(false);
   //@ts-ignore
@@ -88,50 +93,53 @@ const Messages = () => {
   const messageAreaRef = useRef<HTMLDivElement>(null);
 
   // Load initial data
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const initialPatients = await getPatientsWithLatestMessage();
-        setPatients(initialPatients);
-        if (Object.keys(initialPatients).length > 0) {
-          setSelectedPatient(Object.keys(initialPatients)[0]);
-        }
-      } catch (err: any) {
-        console.error("❌ Error loading initial data:", err);
-        setError(err.message || "Failed to load initial data");
-      } finally {
-        setLoading(false);
-      }
-    };
+  // useEffect(() => {
+  //   const loadInitialData = async () => {
+  //     try {
+  //       const initialPatients = await getPatientsWithLatestMessage({userId:userDetails.user_id});
+  //       console.log(initialPatients,'initialPatients')
+  //       setPatients(initialPatients);
+  //       if (Object.keys(initialPatients).length > 0) {
+  //         setSelectedPatient(Object.keys(initialPatients)[0]);
+  //       }
+  //     } catch (err: any) {
+  //       console.error("❌ Error loading initial data:", err);
+  //       setError(err.message || "Failed to load initial data");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    loadInitialData();
-  }, []);
+  //   loadInitialData();
+  // }, []);
   // Set up real-time subscription
-  useEffect(() => {
-    const unsubscribe = subscribeToDoctorMessages((updaterFn: any) => {
-      setPatients((current: any) => {
-        const updated = updaterFn(current);
-        return updated;
-      });
-    });
+  // useEffect(() => {
+  //   const unsubscribe = subscribeToDoctorMessages((updaterFn: any) => {
+  //     setPatients((current: any) => {
+  //       const updated = updaterFn(current);
+  //       return updated;
+  //     });
+  //   });
 
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  //   return () => {
+  //     unsubscribe();
+  //   };
+  // }, []);
 
-  const handlePatientSelect = useCallback((patientId: string) => {
-    setSelectedPatient(patientId);
+  const handlePatientSelect = useCallback((patient: any) => {
+    setSelectedPatient(patient);
   }, []);
 
   const handleSendMessage = async (e: any) => {
-  setLoadingSendMessage(true)
+    setLoadingSendMessage(true);
     e.preventDefault();
     if (!selectedPatient || !newMessage.trim()) return;
 
-  
     try {
-      await sendMessageToPatient(selectedPatient.details?.name, newMessage.trim());
+      await sendMessageToPatient(
+        selectedPatient.details?.name,
+        newMessage.trim()
+      );
       setNewMessage("");
     } catch (err) {
       console.error("❌ Error sending message:", err);
@@ -140,13 +148,21 @@ const Messages = () => {
       setLoadingSendMessage(false);
     }
   };
-  const patientIds = Object.keys(patients);
+  // const patientIds = Object.keys(patients);
 
   //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
+  
+  // Filter messages based on search term
+  const filteredMessages = messages && messages.length > 0 
+    ? messages.filter((contact: any) => 
+        contact.contactName.toLowerCase().includes(debouncedSearchValue.toLowerCase())
+      )
+    : [];
+
   //@ts-ignore
   const { socketData, socket, message, setMessage, userDetails } = useAuth();
-  console.log(socketData);
+  // console.log(socketData);
 
   // Scroll to bottom of messages when messages change
   useEffect(() => {
@@ -154,6 +170,39 @@ const Messages = () => {
       messageAreaRef.current.scrollTop = messageAreaRef.current.scrollHeight;
     }
   }, [selectedPatient?.messages]);
+
+  // Helper function to format timestamp based on if it's today or not
+  const formatMessageTime = (timestamp: any) => {
+    const messageDate = new Date(
+      timestamp.seconds * 1000 + timestamp.nanoseconds / 1e6
+    );
+    const today = new Date();
+    
+    // Check if the message is from today
+    const isToday = 
+      messageDate.getDate() === today.getDate() &&
+      messageDate.getMonth() === today.getMonth() &&
+      messageDate.getFullYear() === today.getFullYear();
+    
+    if (isToday) {
+      // Show only time for today's messages
+      return messageDate.toLocaleString(undefined, {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      });
+    } else {
+      // Show date and time for older messages
+      return messageDate.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      });
+    }
+  };
 
   return (
     <Box
@@ -176,9 +225,9 @@ const Messages = () => {
 
         {/* Contact list items */}
         <Box>
-          {patients &&
-            patientIds.length > 0 &&
-            Object.values(patients).map((contact: any, index: number) => (
+          {messages &&
+            messages.length > 0 &&
+            filteredMessages.map((contact: any, index: number) => (
               <Box
                 key={index}
                 sx={{
@@ -190,7 +239,7 @@ const Messages = () => {
                     bgcolor: "rgba(0, 0, 0, 0.04)",
                   },
                   // Highlight active chat based on selected contact
-                  ...(selectedPatient === contact.details.name
+                  ...(selectedPatient?.contactName === contact.contactName
                     ? { bgcolor: "rgba(0, 0, 0, 0.04)" }
                     : {}),
                 }}
@@ -198,13 +247,13 @@ const Messages = () => {
               >
                 <Avatar
                   sx={{
-                    bgcolor: stringToColor(contact.details.name),
+                    bgcolor: stringToColor(contact.contactName),
                     width: 40,
                     height: 40,
                   }}
                 >
-                  {contact.details.name.charAt(0)}
-                  {contact.details.name.charAt(0)}
+                  {contact.contactName.charAt(0)}
+                  {contact.contactName.charAt(0)}
                 </Avatar>
                 <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
                   <Box
@@ -214,11 +263,15 @@ const Messages = () => {
                       alignItems: "center",
                     }}
                   >
-                    <Typography variant="bodyLargeExtraBold" noWrap>
-                      {contact.details.name}
+                    <Typography
+                      sx={{ maxWidth: "170px" }}
+                      variant="bodyLargeExtraBold"
+                      noWrap
+                    >
+                      {contact.contactName}
                     </Typography>
                     <Typography variant="bodyMediumMedium">
-                      {formatDate(contact.messages[0]?.timestamp)}
+                      {formatMessageTime(contact.timestamp)}
                     </Typography>
                   </Box>
                   {/* <Box
@@ -262,7 +315,25 @@ const Messages = () => {
                 </Box>
               </Box>
             ))}
-          {patients && Object.keys(patients).length === 0 && (
+          {messages && messages.length > 0 && filteredMessages.length === 0 && (
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                p: 4,
+              }}
+            >
+              <Box  sx={{ width:"300px"}}>
+
+              <Typography className="truncate"  variant="bodyLargeExtraBold">
+                No contacts found matching "{searchValue}"
+              </Typography>
+              </Box>
+            </Box>
+          )}
+          {messages && messages.length === 0 && (
             <Box
               sx={{
                 display: "flex",
@@ -276,7 +347,7 @@ const Messages = () => {
               </Typography>
             </Box>
           )}
-          {loading && !patients && (
+          {loading && messages.length === 0 && (
             <Box
               sx={{
                 display: "flex",
@@ -305,38 +376,41 @@ const Messages = () => {
             }}
           >
             <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>
-              {selectedPatient.details?.name.charAt(0)}
+              {selectedPatient.contactName.charAt(0)}
             </Avatar>
             <Typography variant="subtitle1" fontWeight="bold">
-              {selectedPatient.details?.name}
+              {selectedPatient.contactName}
             </Typography>
           </Box>
 
           {/* Messages area */}
           <Box sx={messageAreaStyles} ref={messageAreaRef}>
             {selectedPatient &&
-              (selectedPatient.messages?.length > 0 ? (
-                [...selectedPatient.messages].reverse().map((msg: any) => (
+              (selectedPatient.message ? (
+                // [...selectedPatient.messages].reverse().map((msg: any) => (
+                <Box
+                  key={selectedPatient.id}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems:
+                      selectedPatient.sender !== EnMessageSender.MEDINI
+                        ? "flex-end"
+                        : "flex-start",
+                    mb: 2,
+                  }}
+                >
                   <Box
-                    key={msg.id}
                     sx={{
                       display: "flex",
-                      flexDirection: "column",
-                      alignItems: msg.sender !== EnMessageSender.MEDINI ? "flex-end" : "flex-start",
-                      mb: 2,
+                      alignItems: "center",
+                      justifyContent:
+                        selectedPatient.sender !== EnMessageSender.MEDINI
+                          ? "flex-end"
+                          : "flex-start",
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent:
-                          msg.sender !== EnMessageSender.MEDINI
-                            ? "flex-end"
-                            : "flex-start",
-                      }}
-                    >
-                      {/* {!msg.isUser && (
+                    {/* {!msg.isUser && (
                         <Avatar
                           sx={{
                             width: 32,
@@ -351,63 +425,76 @@ const Messages = () => {
                           {selectedContact.first_name.charAt(0)}
                         </Avatar>
                       )} */}
-                      <Box
-                        sx={{
-                          maxWidth: "100%",
-                          p: 1.5,
-                          borderRadius: "16px",
-                          borderBottomRightRadius:
-                            msg.sender !== EnMessageSender.MEDINI ? 0 : "16px",
-                          borderBottomLeftRadius:
-                            msg.sender !== EnMessageSender.MEDINI ? "16px" : 0,
-                          bgcolor:
-                            msg.sender !== EnMessageSender.MEDINI
-                              ? "primary.main"
-                              : "grey.100",
-                          color:
-                            msg.sender !== EnMessageSender.MEDINI ? "white" : "inherit",
-                        }}
-                      >
-                        {msg.sender !== EnMessageSender.MEDINI ? (
-                          <Typography variant="body1">
-                            {/* Hey! I just booked this patient{" "}
+                    <Box
+                      sx={{
+                        maxWidth: "100%",
+                        p: 1.5,
+                        borderRadius: "16px",
+                        borderBottomRightRadius:
+                          selectedPatient.sender !== EnMessageSender.MEDINI
+                            ? 0
+                            : "16px",
+                        borderBottomLeftRadius:
+                          selectedPatient.sender !== EnMessageSender.MEDINI
+                            ? "16px"
+                            : 0,
+                        bgcolor:
+                          selectedPatient.sender !== EnMessageSender.MEDINI
+                            ? "primary.main"
+                            : "grey.100",
+                        color:
+                          selectedPatient.sender !== EnMessageSender.MEDINI
+                            ? "white"
+                            : "inherit",
+                      }}
+                    >
+                      {selectedPatient.sender !== EnMessageSender.MEDINI ? (
+                        <Typography variant="body1">
+                          {/* Hey! I just booked this patient{" "}
                             {selectedPatient.message} for an appointment on{" "}
                             {selectedPatient.message} at{" "}
                             {selectedPatient.message} o'clock with{" "} */}
-                            {msg.message}
+                          {selectedPatient.message}
+                        </Typography>
+                      ) : (
+                        <>
+                          <Typography variant="body1">
+                            {selectedPatient.message}
                           </Typography>
-                        ) : (
-                          <Typography variant="body1">{msg.message}</Typography>
-                        )}
-                      </Box>
-                      {msg.sender !== EnMessageSender.MEDINI && (
-                        <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                          <img src={share} alt="share" />
-                        </IconButton>
+                        </>
                       )}
                     </Box>
-
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        mt: 0.5,
-                        gap: 1,
-                        ml: msg.sender !== EnMessageSender.MEDINI ? 0 : 0,
-                      }}
-                    >
-                      <Typography variant="bodySmallExtraBold" ml={1}>
-                        {msg.sender !== EnMessageSender.MEDINI
-                          ? "You"
-                          : selectedPatient.message}
-                      </Typography>
-                      <Typography variant="bodySmallMedium" color="grey.500">
-                        {formatDate(msg?.timestamp)}
-                      </Typography>
-                    </Box>
+                    {selectedPatient.sender !== EnMessageSender.MEDINI && (
+                      <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                        <img src={share} alt="share" />
+                      </IconButton>
+                    )}
                   </Box>
-                ))
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      mt: 0.5,
+                      gap: 1,
+                      ml:
+                        selectedPatient.sender !== EnMessageSender.MEDINI
+                          ? 0
+                          : 0,
+                    }}
+                  >
+                    <Typography variant="bodySmallExtraBold" ml={1}>
+                      {selectedPatient.sender !== EnMessageSender.MEDINI
+                        ? "You"
+                        : selectedPatient.contactName}
+                    </Typography>
+                    <Typography variant="bodySmallMedium" color="grey.500">
+                      {formatMessageTime(selectedPatient.timestamp)}
+                    </Typography>
+                  </Box>
+                </Box>
               ) : (
+                // ))
                 <Box
                   sx={{
                     display: "flex",

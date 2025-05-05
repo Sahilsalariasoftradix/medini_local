@@ -27,7 +27,9 @@ export interface UserFormValues {
   password: string;
   displayName: string;
 }
-
+export interface INewUserDetails {
+  name: string;
+}
 //*  Step form
 export interface IUserDetails {
   reasonForUsing: string;

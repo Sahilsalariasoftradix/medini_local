@@ -468,9 +468,9 @@ export const sendMessageToPatient = async (
       firebaseFirestore,
       EnFirebaseCollections.MESSAGES,
       "141",
-      EnFirebaseCollections.PATIENTS,
+      EnFirebaseCollections.CUSTOMERS,
       patientName,
-      EnFirebaseCollections.MESSAGE
+      EnFirebaseCollections.MESSAGES
     );
     const docRef = await addDoc(messageCollectionRef, {
       message: messageText,
@@ -547,13 +547,17 @@ export const subscribeToPatientMessages = (
 /**
  * Retrieves the list of patients and their latest messages.
  */
-export const getPatientsWithLatestMessage = async () => {
+export const getPatientsWithLatestMessage = async ({
+  userId,
+}: {
+  userId: string;
+}) => {
   try {
     const patientsCollectionRef = collection(
       firebaseFirestore,
       EnFirebaseCollections.MESSAGES,
-      "141",
-      "patients"
+      `user_${userId}`,
+      EnFirebaseCollections.CUSTOMERS
     );
     const patientsSnapshot = await getDocs(patientsCollectionRef);
 
@@ -571,11 +575,12 @@ export const getPatientsWithLatestMessage = async () => {
         const messageCollectionRef = collection(
           firebaseFirestore,
           EnFirebaseCollections.MESSAGES,
-          "141",
-          "patients",
+          `user_${userId}`,
+          EnFirebaseCollections.CUSTOMERS,
           patientName,
-          "message"
+          EnFirebaseCollections.MESSAGES
         );
+
         const messagesSnapshot = await getDocs(
           query(messageCollectionRef, orderBy("timestamp", "desc"))
         );
@@ -595,7 +600,7 @@ export const getPatientsWithLatestMessage = async () => {
           };
         } else {
           //@ts-ignore
-            patients[patientName] = {
+          patients[patientName] = {
             details: { name: patientName },
             messages: [],
           };
@@ -709,4 +714,37 @@ export const updateContact = async (contact: IContact): Promise<void> => {
     console.error("Error updating contact:", error);
     throw new Error("Failed to update contact");
   }
+};
+
+export const getMessages = (
+  { userId }: { userId: string },
+  callback: (messages: any[]) => void,
+  errorCallback?: (error: any) => void
+) => {
+  const messagesCollectionRef = collection(
+    firebaseFirestore,
+    EnFirebaseCollections.MESSAGES
+  );
+
+  const messagesQuery = query(
+    messagesCollectionRef,
+    where("userId", "==", userId) // only messages with matching user_id
+  );
+
+  const unsubscribe = onSnapshot(
+    messagesQuery,
+    (snapshot) => {
+      const messages = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      callback(messages);
+    },
+    (error) => {
+      console.error("Error listening to messages:", error);
+      if (errorCallback) errorCallback(error);
+    }
+  );
+
+  return unsubscribe; // call this to stop listening
 };

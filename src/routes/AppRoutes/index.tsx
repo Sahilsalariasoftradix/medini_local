@@ -24,6 +24,7 @@ import TermsOfServicePage from "../../pages/TermsOfService";
 import Messages from "../../components/Messages";
 import AppointmentChecker from "../../components/AppointmentChecker/AppointmentChecker";
 import Contacts from "../../pages/contacts";
+import Events from "../../pages/events";
 
 const AppRoutes: React.FC = () => {
   const { loading } = useAuth();
@@ -83,6 +84,7 @@ const AppRoutes: React.FC = () => {
               path={routes.sidebar.contacts.link}
               element={<Contacts />}
             />
+            <Route path={routes.sidebar.events.link} element={<Events />} />
           </Route>
         </Route>
 

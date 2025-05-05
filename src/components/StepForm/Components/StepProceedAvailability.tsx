@@ -15,7 +15,6 @@ import { EnOnboardingStatus } from "../../../utils/enums";
 import { routes } from "../../../utils/links";
 import { useAuth } from "../../../store/AuthContext";
 import { useState } from "react";
-
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import { postAvailabilityGeneral } from "../../../api/userApi";
