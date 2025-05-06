@@ -155,7 +155,7 @@ export enum EnFormContactType {
   EDIT = "edit",
 }
 export enum EnAIStatus {
-  ENABLED = 0,
-  DISABLED = 1,
-  PAUSED = 2,
+  ENABLED = 1,
+  DISABLED = 0,
+  // PAUSED = 2,
 }

@@ -414,3 +414,16 @@ export interface IAISchedule {
   start_time: string | null;
   end_time: string | null;
 }
+export interface ICompany {
+  id: number;
+  address_line_one: string;
+  address_line_two: string;
+  ai_enabled:number;
+  city:string;
+  country:string;
+  in_person_appointments:number;
+  max_appointment_time:number;
+  company_name:string;
+  phone_number:string;
+  company_code:string;
+}

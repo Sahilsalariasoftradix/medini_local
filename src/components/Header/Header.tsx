@@ -8,11 +8,12 @@ import {
   MenuItem,
   Avatar,
   Container,
+  Skeleton,
 } from "@mui/material";
 import { drawerWidth } from "../sidebar/Sidebar";
 import { IHeaderProps, INewUserDetails } from "../../utils/Interfaces";
 // import bell from "../../assets/icons/notifications.svg";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import down from "../../assets/icons/arrow-down.svg";
 // import profile1 from "../../assets/images/profile-1.svg";
 import profile2 from "../../assets/images/profile-2.svg";
@@ -27,6 +28,7 @@ import AIEnabled from "../../assets/icons/AI-Enabled.svg";
 import AIDisabled from "../../assets/icons/AI-Disabled.svg";
 import { EnAIStatus } from "../../utils/enums";
 import CommonTextField from "../common/CommonTextField";
+import { updateAIStatus } from "../../api/userApi";
 
 const AIStatus = () => [
   {
@@ -50,13 +52,27 @@ const AIStatus = () => [
 ];
 
 const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
+  const { companyDetails, loadingCompanyDetails,setTimer } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [aiStatusAnchorEl, setAiStatusAnchorEl] = useState<null | HTMLElement>(
     null
   );
+
   const [currentAiStatus, setCurrentAiStatus] = useState<EnAIStatus>(
-    EnAIStatus.ENABLED
+   companyDetails?.ai_enabled === EnAIStatus.ENABLED ? EnAIStatus.ENABLED : EnAIStatus.DISABLED
   );
+ 
+
+  useEffect(() => {
+    if (companyDetails?.ai_enabled !== undefined) {
+      setCurrentAiStatus(
+        companyDetails.ai_enabled === 1
+          ? EnAIStatus.ENABLED
+          : EnAIStatus.DISABLED
+      );
+    }
+  }, [companyDetails?.ai_enabled]);
+
   const [isEditUser, setIsEditUser] = useState(false);
   const [newUserInfo, setNewUserInfo] = useState<INewUserDetails | null>({
     name: "John Doe",
@@ -85,14 +101,15 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
   };
 
   const handleAiStatusChange = (status: EnAIStatus) => {
+    if (!companyDetails?.id) return;
+    updateAIStatus(
+      companyDetails?.id,
+      status === EnAIStatus.ENABLED ? true : false
+    );
     setCurrentAiStatus(status);
+    setTimer(60000);
     handleAiClose();
   };
-
-  // Get current AI status details
-  const currentAiStatusDetails = AIStatus().find(
-    (status) => status.Status === currentAiStatus
-  );
 
   const { userDetails: userInfo, logout } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -107,7 +124,6 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
         boxShadow: "none",
       }}
     >
-   
       {/* Delete user dialog */}
       <CommonDialog
         open={isDeleteUser}
@@ -221,26 +237,41 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
               }}
               onClick={handleAiClick}
             >
-              <Avatar
-                variant="square"
-                sx={{
-                  width: 18,
-                  height: 18,
-                  ml: 1,
-                }}
-                src={currentAiStatusDetails?.Icon}
-              />
-              <Typography variant="bodyLargeMedium" color="secondary.main">
-                {currentAiStatusDetails?.Description}
-              </Typography>
-              <IconButton
-                size="small"
-                sx={{
-                  p: 0,
-                }}
-              >
-                <img src={down} alt="down" />
-              </IconButton>
+              {loadingCompanyDetails ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Skeleton variant="circular" width={32} height={32} />
+                  <Skeleton variant="text" width={100} height={20} />
+                </Box>
+              ) : (
+                <>
+                  <Avatar
+                    variant="square"
+                    sx={{
+                      width: 18,
+                      height: 18,
+                      ml: 1,
+                    }}
+                    src={
+                      currentAiStatus == EnAIStatus.ENABLED
+                        ? AIEnabled
+                        : AIDisabled
+                    }
+                  />
+                  <Typography variant="bodyLargeMedium" color="secondary.main">
+                    {currentAiStatus === EnAIStatus.ENABLED
+                      ? "AI Enabled"
+                      : "AI Disabled"}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    sx={{
+                      p: 0,
+                    }}
+                  >
+                    <img src={down} alt="down" />
+                  </IconButton>
+                </>
+              )}
             </Box>
 
             <Menu
@@ -266,30 +297,28 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
               transformOrigin={{ horizontal: "right", vertical: "top" }}
               anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
             >
-              {AIStatus().map((status) => (
-                <MenuItem
-                  key={status.Status}
-                  onClick={() => handleAiStatusChange(status.Status)}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    bgcolor:
-                      currentAiStatus === status.Status
-                        ? "grey.100"
-                        : "transparent",
-                  }}
-                >
-                  <Box
-                    component="img"
-                    src={status.Icon}
-                    alt={status.Text}
-                    width={14}
-                    height={14}
-                  />
-                  {status.Text}
-                </MenuItem>
-              ))}
+              {AIStatus()
+                .filter((status) => status.Status !== currentAiStatus)
+                .map((status) => (
+                  <MenuItem
+                    key={status.Status}
+                    onClick={() => handleAiStatusChange(status.Status)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={status.Icon}
+                      alt={status.Text}
+                      width={14}
+                      height={14}
+                    />
+                    {status.Text}
+                  </MenuItem>
+                ))}
             </Menu>
 
             <Box
@@ -396,7 +425,10 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
                 </Box>
               </MenuItem>
 
-              <MenuItem onClick={() => setAddNewUser(true)} sx={{ color: "primary.main" }}>
+              <MenuItem
+                onClick={() => setAddNewUser(true)}
+                sx={{ color: "primary.main" }}
+              >
                 + Add New Calendar
               </MenuItem>
 

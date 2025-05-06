@@ -305,8 +305,34 @@ export const getAISchedule = async (companyId: number) => {
   try {
     const response = await apiClient.get(`config?company_id=${companyId}`);
     return response.data;
+  
   } catch (error) {
     console.error("Error getting AI schedule:", error);
+    throw error;
+  }
+};
+
+// Get Company Details API
+export const getCompany = async (companyId: number) => {
+  try {
+    const response = await apiClient.get(`company/${companyId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting company details:", error);
+    throw error;
+  }
+};
+
+// Update AI Status API.
+export const updateAIStatus = async (companyId: number, aiStatus: boolean) => {
+  try {
+    const response = await apiClient.post(`company/ai-status`, {
+      company_id: companyId,
+      ai_enabled: aiStatus,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating AI status:", error);
     throw error;
   }
 };

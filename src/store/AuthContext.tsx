@@ -3,7 +3,8 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { firebaseAuth } from "../firebase/BaseConfig";
 
 import { getMessages, getUserDetails } from "../firebase/AuthService";
-import { IBooking } from "../utils/Interfaces";
+import { IBooking, ICompany } from "../utils/Interfaces";
+import { getCompany } from "../api/userApi";
 
 interface IAuthContextType {
   user: User | null;
@@ -18,6 +19,12 @@ interface IAuthContextType {
   setMessage: (message: string) => void;
   messages: any[];
   setMessages: (messages: any[]) => void;
+  companyDetails: ICompany | null;
+  setCompanyDetails: (companyDetails: ICompany | null) => void;
+  loadingCompanyDetails: boolean;
+  setLoadingCompanyDetails: (loadingCompanyDetails: boolean) => void;
+  timer: number;
+  setTimer: (timer: number) => void;
 }
 const AuthContext = createContext<IAuthContextType | undefined>(undefined);
 
@@ -27,12 +34,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(undefined);
+  const [timer, setTimer] = useState(60000);
   //@ts-ignore
   const [socketData, setSocketData] = useState<IBooking[]>([]);
-   //@ts-ignore
+  //@ts-ignore
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
+  const [loadingCompanyDetails, setLoadingCompanyDetails] = useState(true);
+  const [companyDetails, setCompanyDetails] = useState<ICompany | null>(null);
   //@ts-ignore
   const [connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected"
@@ -57,15 +67,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => unsubscribe();
   }, []);
 
-  // const signIn = async (email: string, password: string) => {
-  //   setLoading(true);
-  //   try {
-  //     await signInWithEmail(email, password);
-  //   } catch (error) {
-  //     setLoading(false);
-  //     throw error;
-  //   }
-  // };
+  const fetchCompanyDetails = async () => {
+    try {
+      const resp = await getCompany(userDetails.company_id);
+      setCompanyDetails(resp);
+    } catch (error) {
+      console.error("Error fetching company details:", error);
+    } finally {
+      setLoadingCompanyDetails(false);
+    }
+  };
+
+  //* Fetch company details
+  useEffect(() => {
+    setLoadingCompanyDetails(true);
+    if (!userDetails?.company_id) return;
+
+    // Initial fetch
+    fetchCompanyDetails();
+    
+    // Set up interval to fetch every 60 seconds
+    const intervalId = setInterval(() => {
+      fetchCompanyDetails();
+    }, timer);
+    
+   
+    return () => clearInterval(intervalId);
+  }, [userDetails?.company_id]);
+
   useEffect(() => {
     if (!userDetails?.user_id) return;
     const unsubscribe = getMessages(
@@ -171,7 +200,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         message,
         setMessage,
         messages,
-        setMessages
+        setMessages,
+        companyDetails,
+        setCompanyDetails,
+        loadingCompanyDetails,
+        setLoadingCompanyDetails,
+        timer,
+        setTimer,
       }}
     >
       {children}

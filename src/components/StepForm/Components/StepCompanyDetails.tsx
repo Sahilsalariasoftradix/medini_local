@@ -76,6 +76,7 @@ const CompanyDetails: React.FC = () => {
       setCompanyId(response.company?.id);
       updateUserDetails({
         ...updatedDetails,
+        company_id: response.company?.id,
         onboardingStatus: EnOnboardingStatus.STATUS_1,
       });
       // Step 3: Update context with new user details
