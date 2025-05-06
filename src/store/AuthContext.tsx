@@ -85,13 +85,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Initial fetch
     fetchCompanyDetails();
-    
+
     // Set up interval to fetch every 60 seconds
     const intervalId = setInterval(() => {
       fetchCompanyDetails();
     }, timer);
-    
-   
+
     return () => clearInterval(intervalId);
   }, [userDetails?.company_id]);
 

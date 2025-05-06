@@ -25,9 +25,11 @@ import { APPOINTMENT_OPTIONS, COUNTRY_OPTIONS } from "../../../utils/options";
 import { useAuthHook } from "../../../hooks/useAuth";
 import { postCompanyDetails } from "../../../api/userApi";
 import { EnOnboardingStatus } from "../../../utils/enums";
+import { useAuth } from "../../../store/AuthContext";
 
 const CompanyDetails: React.FC = () => {
   const { updateUserDetails, skipNextStep, setCompanyId } = useStepForm();
+  const { setUserDetails, userDetails } = useAuth();
 
   const { isLoading, setIsLoading } = useAuthHook();
   // Validate hook
@@ -69,14 +71,16 @@ const CompanyDetails: React.FC = () => {
       // Send company details
       const response = await postCompanyDetails(companyData);
       await updateUserDetailsInFirestore(userId, {
-        company_id: response.company?.id,
         onboardingStatus: EnOnboardingStatus.STATUS_1, // Use updatedStatus directly
+      });
+      setUserDetails({
+        ...userDetails,
+        company_id: response.company?.id,
       });
 
       setCompanyId(response.company?.id);
       updateUserDetails({
         ...updatedDetails,
-        company_id: response.company?.id,
         onboardingStatus: EnOnboardingStatus.STATUS_1,
       });
       // Step 3: Update context with new user details
@@ -121,7 +125,7 @@ const CompanyDetails: React.FC = () => {
             />
           </Grid>
           <Grid size={6}>
-          <Typography mb={1} variant="bodyLargeExtraBold" color="grey.600">
+            <Typography mb={1} variant="bodyLargeExtraBold" color="grey.600">
               Address
             </Typography>
             <CommonTextField
@@ -131,7 +135,6 @@ const CompanyDetails: React.FC = () => {
             />
           </Grid>
           <Grid size={6}>
-            
             <Typography
               mb={1}
               noWrap
