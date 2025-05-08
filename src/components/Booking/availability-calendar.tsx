@@ -310,7 +310,8 @@ const TimeSlot = ({
     );
   };
   const isPastDate = isPastDateTime(date, time);
-  const { userDetails } = useAuth();
+  const {  selectedUser } = useAuth();
+  const user_id = selectedUser?.user_id;
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     if ((disabled && !appointment) || isPastDate) {
       return;
@@ -442,7 +443,7 @@ const TimeSlot = ({
 
       if (isEditing && appointmentId) {
         await updateBooking({
-          user_id: userDetails?.user_id,
+          user_id: user_id!,
           booking_id: Number(appointmentId),
           date: dayjs(data.date).format("YYYY-MM-DD"),
           start_time: data.startTime,
@@ -456,7 +457,7 @@ const TimeSlot = ({
         });
       } else {
         await createBooking({
-          user_id: userDetails?.user_id,
+          user_id: user_id!,
           date: dayjs(data.date).format("YYYY-MM-DD"),
           start_time: data.startTime,
           end_time: endTimeFormatted,
@@ -784,7 +785,8 @@ export default function AvailabilityCalendar() {
   const [bookings, setBookings] = useState<IBookingResponse[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const { userDetails } = useAuth();
+  const {  selectedUser } = useAuth();
+  const user_id = selectedUser?.user_id;
 
   useEffect(() => {
     fetchInitialAvailability();
@@ -798,7 +800,7 @@ export default function AvailabilityCalendar() {
     try {
       setLoading(true);
       const response = await getBookings({
-        user_id: userDetails?.user_id,
+        user_id: user_id!,
         date: dayjs(startDate).format("YYYY-MM-DD"),
         range: EnAvailability.WEEK,
       });

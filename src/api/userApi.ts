@@ -7,6 +7,7 @@ import {
   ICall,
   ICompanyDetails,
   IGetAvailability,
+  ISecretary,
   IUpdateBooking,
   IUser,
   TGetBooking,
@@ -144,6 +145,18 @@ export const createUser = async (userData: IUser) => {
   } catch (error: any) {
     console.error("Error creating user:", error);
     throw new Error(error.response?.data?.error || "User creation failed.");
+  }
+};
+// Create Secretary API
+export const createSecretary = async (secretaryData: ISecretary) => {
+  try {
+    const response = await apiClient.post("secretary/create", secretaryData);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error creating secretary:", error);
+    throw new Error(
+      error.response?.data?.error || "Secretary creation failed."
+    );
   }
 };
 
@@ -305,7 +318,6 @@ export const getAISchedule = async (companyId: number) => {
   try {
     const response = await apiClient.get(`config?company_id=${companyId}`);
     return response.data;
-  
   } catch (error) {
     console.error("Error getting AI schedule:", error);
     throw error;
@@ -333,6 +345,44 @@ export const updateAIStatus = async (companyId: number, aiStatus: boolean) => {
     return response.data;
   } catch (error) {
     console.error("Error updating AI status:", error);
+    throw error;
+  }
+};
+export const getUserEventLogs = async (userId: number) => {
+  try {
+    const response = await apiClient.get(`user/event-log/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting user event logs:", error);
+    throw error;
+  }
+};
+// Join Company API
+export const joinCompany = async (companyCode: string, secretaryId: number) => {
+  try {
+    const response = await apiClient.post(`company/join`, {
+      company_code: companyCode,
+      secretary_id: secretaryId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error joining company:", error);
+    throw error;
+  }
+};
+// Join user via secretary API
+export const joinUserViaSecretary = async (
+  secretaryId: number,
+  userId: number
+) => {
+  try {
+    const response = await apiClient.post(`secretary/user`, {
+      secretary_id: secretaryId,
+      user_id: userId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error joining user via secretary:", error);
     throw error;
   }
 };

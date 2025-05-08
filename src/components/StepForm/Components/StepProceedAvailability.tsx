@@ -183,7 +183,6 @@ const ProceedAvailability = () => {
       open: false,
     }));
   };
-
   // Final data submission and status changing function
   const handleContinue = async () => {
     setIsLoading(true);
@@ -271,7 +270,7 @@ const ProceedAvailability = () => {
       resetForm();
       // Create the final payload
       const payload = {
-        user_id: userDetails?.user_id, // Replace with actual user ID if needed
+        user_id: userDetails?.users[0].user_id, // Replace with actual user ID if needed
         availabilities,
       };
 

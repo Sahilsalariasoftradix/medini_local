@@ -40,8 +40,8 @@ import {
 } from "../../../utils/Icons";
 import SocialLogin from "../SocialLogin";
 import { useState } from "react";
-import { IUser } from "../../../utils/Interfaces";
-import { createUser } from "../../../api/userApi";
+import { ISecretary } from "../../../utils/Interfaces";
+import { createSecretary } from "../../../api/userApi";
 import { EnUserCreationStatus } from "../../../utils/enums";
 import "react-international-phone/style.css";
 import { MuiPhone } from "./CustomPhoneInput";
@@ -89,7 +89,7 @@ const SignUpForm = () => {
 
     setIsLoading(true);
     try {
-      const userData: IUser = {
+      const userData:ISecretary = {
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
@@ -97,7 +97,7 @@ const SignUpForm = () => {
         password: data.password,
       };
 
-      const responseData = await createUser(userData);
+      const responseData = await createSecretary(userData);
 
       // Ensure response is valid before proceeding
       if (
@@ -109,7 +109,8 @@ const SignUpForm = () => {
           data.password,
           data.firstName,
           data.lastName,
-          responseData.user.user_id
+          responseData.secretary.secretary_id
+          // responseData.user.user_id
         );
         setSnackbarSeverity("success");
         setSnackbarMessage(successMessage || successfullyRegisteredMessage);
@@ -117,11 +118,8 @@ const SignUpForm = () => {
         reset();
         setIsLoading(false);
         setOpenConfirmationModal(true);
-        // setTimeout(() => {
-        //   navigate(routes.auth.signIn);
-        // }, 2000);
       } else {
-        throw new Error("Failed to create user.");
+        throw new Error("Failed to create secretary.");
       }
     } catch (error: any) {
       setSnackbarSeverity("error");

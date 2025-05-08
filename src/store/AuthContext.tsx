@@ -1,9 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { firebaseAuth } from "../firebase/BaseConfig";
 
 import { getMessages, getUserDetails } from "../firebase/AuthService";
-import { IBooking, ICompany } from "../utils/Interfaces";
+import { IBooking, ICompany, IUserDetails } from "../utils/Interfaces";
 import { getCompany } from "../api/userApi";
 
 interface IAuthContextType {
@@ -25,6 +31,13 @@ interface IAuthContextType {
   setLoadingCompanyDetails: (loadingCompanyDetails: boolean) => void;
   timer: number;
   setTimer: (timer: number) => void;
+  newUserInfo: IUserDetails[] | null;
+  setNewUserInfo: (newUserInfo: IUserDetails[] | null) => void;
+  refreshUserDetails: () => Promise<void>;
+  selectedUserId: string | null;
+  selectedUser: IUserDetails | null;
+  setSelectedUser: (userId: string) => void;
+  clearSelectedUser: () => void;
 }
 const AuthContext = createContext<IAuthContextType | undefined>(undefined);
 
@@ -34,7 +47,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(undefined);
+  const [newUserInfo, setNewUserInfo] = useState<IUserDetails[] | null>(
+    userDetails?.users
+  );
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(
+    localStorage.getItem("selectedUserId")
+  );
+
   const [timer, setTimer] = useState(60000);
+
   //@ts-ignore
   const [socketData, setSocketData] = useState<IBooking[]>([]);
   //@ts-ignore
@@ -47,6 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected"
   >("disconnected");
+
+  useEffect(() => {
+    if (userDetails?.users) {
+      setNewUserInfo(userDetails.users);
+    }
+  }, [userDetails?.users]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
@@ -185,6 +212,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   //   };
   // }, [userDetails?.user_id]);
   // Reconnect if user ID changes
+
+  // Add this function to refresh user details
+  const refreshUserDetails = async () => {
+    if (!user) return;
+
+    try {
+      const details = await getUserDetails(user.uid);
+      setUserDetails(details);
+    } catch (error) {
+      console.error("Error refreshing user details:", error);
+    }
+  };
+
+  // Set selected user and store in localStorage
+  const setSelectedUser = (userId: string) => {
+    localStorage.setItem("selectedUserId", userId);
+    setSelectedUserId(userId);
+  };
+
+  // Clear selected user from state and localStorage
+  const clearSelectedUser = () => {
+    localStorage.removeItem("selectedUserId");
+    setSelectedUserId(null);
+  };
+
+  // Automatically select the first user if none is selected when users are loaded
+  useEffect(() => {
+    if (newUserInfo && newUserInfo.length > 0 && !selectedUserId) {
+      // If there are users but none is selected, select the first one
+      setSelectedUser(newUserInfo[0].user_id.toString());
+    }
+  }, [newUserInfo, selectedUserId]);
+
+  // Make sure the selected user ID is a string since we're comparing it in the useMemo
+  const selectedUser = useMemo(() => {
+    if (!selectedUserId || !newUserInfo) return null;
+    return (
+      newUserInfo.find((user) => user.user_id.toString() === selectedUserId) ||
+      null
+    );
+  }, [selectedUserId, newUserInfo]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -206,6 +275,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoadingCompanyDetails,
         timer,
         setTimer,
+        newUserInfo,
+        setNewUserInfo,
+        refreshUserDetails,
+        selectedUserId,
+        selectedUser,
+        setSelectedUser,
+        clearSelectedUser,
       }}
     >
       {children}

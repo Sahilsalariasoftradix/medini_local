@@ -8,7 +8,7 @@ import { useAuthHook } from "../../../hooks/useAuth";
 import CommonSnackbar from "../../common/CommonSnackbar";
 
 const ReasonForUsing: React.FC = () => {
-  const { userDetails, updateUserDetails, goToNextStep } = useStepForm();
+  const { userDetails, updateUserDetails, skipNextStep } = useStepForm();
   const {
     setSnackbarOpen,
     snackbarMessage,
@@ -61,7 +61,7 @@ const ReasonForUsing: React.FC = () => {
       reasonForUsingStep: reasonText,
     });
     // As soon as we select the value go to the next step
-    goToNextStep();
+    skipNextStep();
   };
 
   return (

@@ -285,6 +285,14 @@ export interface IUser {
   last_name: string;
   email: string;
   phone: string;
+  // password: string;
+  company_id?: number;
+}
+export interface IUserDetails extends IUser {
+  user_id: number;
+}
+export interface ISecretary extends IUser {
+  company_id?: number;
   password: string;
 }
 
@@ -426,4 +434,12 @@ export interface ICompany {
   company_name:string;
   phone_number:string;
   company_code:string;
+}
+export interface IEventLogs{
+  id:number;
+  user_id:number;
+  color:string;
+  name:string;
+  type:string;
+  created_at:string;
 }

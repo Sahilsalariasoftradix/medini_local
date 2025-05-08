@@ -37,15 +37,16 @@ const SlotBookingForm: React.FC<ISlotBookingFormProps> = ({
   const [openDialog, setOpenDialog] = useState<boolean>(false);
   const [contacts, setContacts] = useState<IGetContacts>([]);
   const [selectedContact, setSelectedContact] = useState(null);
-  const { userDetails } = useAuth();
+  const { selectedUserId } = useAuth();
+ 
   // console.log(userDetails?.user_id)
   const fetchContacts = async () => {
-    const contactList = userDetails?.user_id
-      ? await getContactsByUserId(userDetails?.user_id)
+    const contactList = selectedUserId
+      ? await getContactsByUserId(Number(selectedUserId))
       : [];
     setContacts(contactList);
   };
-  // console.log(contacts)
+  console.log(contacts)
   useEffect(() => {
     fetchContacts();
   }, [control._formValues?.contact]);

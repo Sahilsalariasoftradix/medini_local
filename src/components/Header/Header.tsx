@@ -11,7 +11,8 @@ import {
   Skeleton,
 } from "@mui/material";
 import { drawerWidth } from "../sidebar/Sidebar";
-import { IHeaderProps, INewUserDetails } from "../../utils/Interfaces";
+import Grid from "@mui/material/Grid2";
+import { IHeaderProps, IUser, IUserDetails } from "../../utils/Interfaces";
 // import bell from "../../assets/icons/notifications.svg";
 import { useState, useEffect } from "react";
 import down from "../../assets/icons/arrow-down.svg";
@@ -28,7 +29,26 @@ import AIEnabled from "../../assets/icons/AI-Enabled.svg";
 import AIDisabled from "../../assets/icons/AI-Disabled.svg";
 import { EnAIStatus } from "../../utils/enums";
 import CommonTextField from "../common/CommonTextField";
-import { updateAIStatus } from "../../api/userApi";
+import {
+  createUser,
+  joinUserViaSecretary,
+  updateAIStatus,
+} from "../../api/userApi";
+import { SubmitHandler, useForm } from "react-hook-form";
+import {
+  CalenderNameSchema,
+  CalenderNameSchemaType,
+} from "../../store/StepFormContext";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { MuiPhone } from "../Auth/SignUp/CustomPhoneInput";
+import { useAuthHook } from "../../hooks/useAuth";
+import {
+  getCurrentUserId,
+  updateUsersArray,
+  getUserDetails,
+} from "../../firebase/AuthService";
+import { userNotSignedInErrorMessage } from "../../utils/errorHandler";
+import CommonSnackbar from "../common/CommonSnackbar";
 
 const AIStatus = () => [
   {
@@ -52,16 +72,38 @@ const AIStatus = () => [
 ];
 
 const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
-  const { companyDetails, loadingCompanyDetails,setTimer } = useAuth();
+  const {
+    companyDetails,
+    loadingCompanyDetails,
+    setTimer,
+    refreshUserDetails,
+    setSelectedUser: setGlobalSelectedUser,
+    selectedUserId,
+  } = useAuth();
+  const {
+    userDetails: userInfo,
+    logout,
+    newUserInfo,
+    selectedUser: newSelectedUser,
+  } = useAuth();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [aiStatusAnchorEl, setAiStatusAnchorEl] = useState<null | HTMLElement>(
     null
   );
-
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<CalenderNameSchemaType>({
+    resolver: zodResolver(CalenderNameSchema),
+  });
   const [currentAiStatus, setCurrentAiStatus] = useState<EnAIStatus>(
-   companyDetails?.ai_enabled === EnAIStatus.ENABLED ? EnAIStatus.ENABLED : EnAIStatus.DISABLED
+    companyDetails?.ai_enabled === EnAIStatus.ENABLED
+      ? EnAIStatus.ENABLED
+      : EnAIStatus.DISABLED
   );
- 
 
   useEffect(() => {
     if (companyDetails?.ai_enabled !== undefined) {
@@ -74,9 +116,22 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
   }, [companyDetails?.ai_enabled]);
 
   const [isEditUser, setIsEditUser] = useState(false);
-  const [newUserInfo, setNewUserInfo] = useState<INewUserDetails | null>({
-    name: "John Doe",
-  });
+  //@ts-ignore
+
+  const [selectedUser, setSelectedUser] = useState<IUserDetails | null>(null);
+
+  const {
+    setSnackbarOpen,
+    setSnackbarMessage,
+    setSnackbarSeverity,
+    handleSnackbarClose,
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+  } = useAuthHook();
+  const [phone, setPhone] = useState("");
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [addNewUser, setAddNewUser] = useState(false);
   const [isDeleteUser, setIsDeleteUser] = useState(false);
   const location = useLocation();
@@ -111,8 +166,91 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
     handleAiClose();
   };
 
-  const { userDetails: userInfo, logout } = useAuth();
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const onSubmit: SubmitHandler<CalenderNameSchemaType> = async (data) => {
+    setFormSubmitted(true);
+    if (phone.length < 12) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage("Please enter a valid phone number");
+      setSnackbarOpen(true);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userData: IUser = {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: phone,
+        company_id: userInfo.company_id!,
+      };
+
+      const responseData = await createUser(userData);
+      await joinUserViaSecretary(
+        userInfo.secretaryID!,
+        responseData.user.user_id!
+      );
+      // Step 1: Get the current user ID
+      const userId = getCurrentUserId();
+      if (!userId) {
+        setIsLoading(false);
+        throw new Error(userNotSignedInErrorMessage);
+      }
+
+      // Get current user details to access existing users array
+      const currentUserDetails = await getUserDetails(userId);
+
+      // Create the new user object
+      const newUser = {
+        ...userData,
+        user_id: responseData.user.user_id!,
+        company_id: userInfo.company_id!,
+      };
+
+      // Prepare the updated users array by combining existing users with the new one
+      const updatedUsers = [...(currentUserDetails?.users || []), newUser];
+
+      // Update the users array in Firebase with the combined array
+      await updateUsersArray(userId, updatedUsers);
+      await refreshUserDetails();
+
+      // Close dialog and show success message
+      reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+      });
+      setPhone("");
+      setIsLoading(false);
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Calendar added successfully");
+      setSnackbarOpen(true);
+      setTimeout(() => {
+        setAddNewUser(false);
+      }, 1000);
+    } catch (error: any) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message);
+      setSnackbarOpen(true);
+      setIsLoading(false);
+    }
+  };
+
+  // Add function to handle selecting a user for edit/delete
+  const handleSelectUser = (user: IUserDetails, action: "edit" | "delete") => {
+    setSelectedUser(user);
+    if (action === "edit") {
+      setIsEditUser(true);
+    } else {
+      setIsDeleteUser(true);
+    }
+  };
+
+  // Function to handle user selection for the global context
+  const handleUserSelection = (user: IUserDetails) => {
+    setGlobalSelectedUser(user.user_id.toString());
+    handleClose();
+  };
+
   return (
     <AppBar
       position="fixed"
@@ -137,7 +275,7 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
         <Typography variant="bodyXLargeSemiBold">
           Are you sure you want to delete{" "}
           <span style={{ color: "#000", fontWeight: "bold" }}>
-            {newUserInfo?.name} ?
+            {selectedUser?.first_name} {selectedUser?.last_name} ?
           </span>{" "}
         </Typography>
         <Box
@@ -184,14 +322,52 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
         confirmText="Save"
         cancelText="Cancel"
         onConfirm={() => setIsEditUser(false)}
+        disabled={isLoading}
+        loading={isLoading}
       >
         <CommonTextField
-          value={newUserInfo?.name}
+          value={selectedUser?.first_name || ""}
           onChange={(e: any) =>
-            setNewUserInfo({ ...newUserInfo, name: e.target.value })
+            setSelectedUser(
+              selectedUser
+                ? { ...selectedUser, first_name: e.target.value }
+                : null
+            )
           }
         />
+        <CommonTextField
+          sx={{ mt: 1 }}
+          value={selectedUser?.last_name || ""}
+          onChange={(e: any) =>
+            setSelectedUser(
+              selectedUser
+                ? { ...selectedUser, last_name: e.target.value }
+                : null
+            )
+          }
+        />
+        <CommonTextField
+          sx={{ mt: 1 }}
+          value={selectedUser?.email || ""}
+          onChange={(e: any) =>
+            setSelectedUser(
+              selectedUser ? { ...selectedUser, email: e.target.value } : null
+            )
+          }
+        />
+        <Box mt={1}>
+          <MuiPhone
+            value={selectedUser?.phone || ""}
+            onChange={(phone) =>
+              setSelectedUser(
+                selectedUser ? { ...selectedUser, phone: phone } : null
+              )
+            }
+            error={formSubmitted && (!phone || phone.length < 12)}
+          />
+        </Box>
       </CommonDialog>
+
       {/* Add new calendar dialog */}
       <CommonDialog
         open={addNewUser}
@@ -200,13 +376,47 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
         confirmButtonType="primary"
         confirmText="Add"
         cancelText="Cancel"
-        onConfirm={() => setAddNewUser(false)}
+        onConfirm={handleSubmit(onSubmit)}
+        loading={isLoading}
+        disabled={isLoading}
       >
+        <Grid container spacing={2}>
+          <Grid size={6}>
+            <CommonTextField
+              sx={{ mt: 1 }}
+              placeholder="First name"
+              register={register("firstName")}
+              errorMessage={errors.firstName?.message}
+            />
+          </Grid>
+          <Grid size={6}>
+            <CommonTextField
+              sx={{ mt: 1 }}
+              placeholder="Last name"
+              register={register("lastName")}
+              errorMessage={errors.lastName?.message}
+            />
+          </Grid>
+        </Grid>
+
         <CommonTextField
-          placeholder="Enter calendar name"
-          onChange={(e: any) =>
-            setNewUserInfo({ ...newUserInfo, name: e.target.value })
-          }
+          sx={{ mt: 1 }}
+          placeholder="Email"
+          register={register("email")}
+          errorMessage={errors.email?.message}
+        />
+        <Box mt={1}>
+          <MuiPhone
+            error={formSubmitted && (!phone || phone.length < 12)}
+            value={phone}
+            onChange={(phone) => setPhone(phone)}
+          />
+        </Box>
+        <CommonSnackbar
+          open={snackbarOpen}
+          message={snackbarMessage}
+          severity={snackbarSeverity}
+          onClose={handleSnackbarClose}
         />
       </CommonDialog>
       <Container disableGutters maxWidth="xl" sx={{ m: 0 }}>
@@ -345,7 +555,7 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
                 src={profile2}
               />
               <Typography variant="bodyLargeExtraBold" color="secondary.main">
-                {userInfo ? userInfo.firstName : "Username"}
+                {newSelectedUser ? newSelectedUser?.first_name : "Username"}
               </Typography>
               <IconButton
                 size="small"
@@ -398,32 +608,69 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
               <Typography variant="bodyMediumSemiBold" sx={{ px: 2, py: 1 }}>
                 Calendars
               </Typography>
-              <MenuItem sx={{ justifyContent: "space-between" }}>
-                {newUserInfo?.name}
-                <Box>
-                  <IconButton onClick={() => setIsEditUser(true)} size="small">
-                    <Box
-                      component="img"
-                      src={editIcon}
-                      alt="edit"
-                      width={16}
-                      height={16}
-                    />
-                  </IconButton>
-                  <IconButton
-                    onClick={() => setIsDeleteUser(true)}
-                    size="small"
-                  >
-                    <Box
-                      component="img"
-                      src={deleteIcon}
-                      alt="delete"
-                      width={16}
-                      height={16}
-                    />
-                  </IconButton>
-                </Box>
-              </MenuItem>
+              {newUserInfo?.map((user) => (
+                <MenuItem
+                  key={user.user_id}
+                  sx={{
+                    justifyContent: "space-between",
+                    bgcolor:
+                      selectedUserId === user.user_id.toString()
+                        ? "primary.light"
+                        : "transparent",
+                    color:
+                      selectedUserId === user.user_id.toString()
+                        ? "#fff"
+                        : "secondary.main",
+                    "&:hover": {
+                      bgcolor:
+                        selectedUserId === user.user_id.toString()
+                          ? "primary.light"
+                          : "transparent",
+                      color:
+                        selectedUserId === user.user_id.toString()
+                          ? "#fff"
+                          : "secondary.main",
+                    },
+                  }}
+                  onClick={() => handleUserSelection(user)}
+                >
+                  <Typography variant="bodyLargeMedium">
+                    {user.first_name} {user.last_name}
+                  </Typography>
+                  <Box>
+                    <IconButton
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering the parent MenuItem onClick
+                        handleSelectUser(user, "edit");
+                      }}
+                      size="small"
+                    >
+                      <Box
+                        component="img"
+                        src={editIcon}
+                        alt="edit"
+                        width={16}
+                        height={16}
+                      />
+                    </IconButton>
+                    <IconButton
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering the parent MenuItem onClick
+                        handleSelectUser(user, "delete");
+                      }}
+                      size="small"
+                    >
+                      <Box
+                        component="img"
+                        src={deleteIcon}
+                        alt="delete"
+                        width={16}
+                        height={16}
+                      />
+                    </IconButton>
+                  </Box>
+                </MenuItem>
+              ))}
 
               <MenuItem
                 onClick={() => setAddNewUser(true)}

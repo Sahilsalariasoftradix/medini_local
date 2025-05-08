@@ -21,7 +21,8 @@ export const useEditAvailability = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const { refreshAvailability } = useAvailability();
   const [clearAvailabilityModal, setClearAvailabilityModal] = useState(false);
-  const { userDetails } = useAuth();
+  const { selectedUser } = useAuth();
+  const user_id = selectedUser?.user_id;
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -136,7 +137,7 @@ export const useEditAvailability = () => {
       );
 
       await postUnAvailabilitySpecific({
-        user_id: userDetails?.user_id,
+        user_id: user_id!,
         date: formattedDate,
         phone_start_time: selectedAvailability?.phone_start_time,
         phone_end_time: selectedAvailability?.phone_end_time,
@@ -271,7 +272,7 @@ export const useEditAvailability = () => {
 
       // Only proceed if validation passes
       const payload: IAvailabilityPayload = {
-        user_id: userDetails?.user_id,
+        user_id: user_id!,
         date: formattedDate,
         phone_start_time: data.phone?.from ? `${data.phone.from}:00` : null,
         phone_end_time: data.phone?.to ? `${data.phone.to}:00` : null,

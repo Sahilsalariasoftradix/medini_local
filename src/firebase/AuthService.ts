@@ -156,6 +156,7 @@ export const updateUserDetailsInFirestore = async (
   }
 };
 
+
 //* Function to fetch all reasons from the Firestore 'reasons' collection
 export const getReasons = async () => {
   // Get a reference to the Firestore database
@@ -182,7 +183,7 @@ export const getReasons = async () => {
 };
 //* Function to fetch all contacts from the Firestore 'contacts' collection
 export const getContactsByUserId = async (
-  userId: string,
+  userId: string | number,
   //@ts-ignore
   isTable?: boolean
 ): Promise<IContact[]> => {
@@ -238,7 +239,8 @@ export const signUpWithEmail = async (
   password: string,
   firstName: string,
   lastName: string,
-  user_id: number
+  // user_id: number,
+  secretary_id: number
 ): Promise<string | void> => {
   try {
     // Step 1: Create user in Firebase Authentication
@@ -256,7 +258,7 @@ export const signUpWithEmail = async (
     const userData = {
       id: user.uid,
       // uuid: newPropId, // Auto-incremented ID
-      user_id: user_id,
+      // user_id: user_id,
       email: user.email,
       firstName,
       lastName,
@@ -265,6 +267,7 @@ export const signUpWithEmail = async (
       deletedAt: null,
       status: EnVerifiedStatus.UNVERIFIED,
       onboardingStatus: EnOnboardingStatus.STATUS_0,
+      secretaryID: secretary_id,
     };
 
     await setDoc(
@@ -747,4 +750,37 @@ export const getMessages = (
   );
 
   return unsubscribe; // call this to stop listening
+};
+
+/**
+ * Updates the "users" array field in a user document with the provided user objects
+ * @param userId The ID of the main user document to update
+ * @param users Array of user objects to store in the "users" field
+ */
+export const updateUsersArray = async (
+  userId: string,
+  users: Array<{
+    user_id: number,
+    first_name: string,
+    last_name: string,
+    email: string,
+    phone: string,
+    company_id: number
+  }>
+): Promise<void> => {
+  try {
+    // Reference to the user document in Firestore
+    const userRef = doc(firebaseFirestore, EnFirebaseCollections.USERS, userId);
+    
+    // Update the document with the users array
+    await updateDoc(userRef, {
+      users: users,
+      updatedAt: serverTimestamp() // Update the timestamp
+    });
+    
+    console.log("Users array successfully updated in user document");
+  } catch (error) {
+    console.error("Error updating users array:", error);
+    throw new Error("Failed to update users array in the user document");
+  }
 };

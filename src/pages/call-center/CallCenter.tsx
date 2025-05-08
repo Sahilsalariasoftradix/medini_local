@@ -495,17 +495,20 @@ const CallCenter = () => {
     setOpenContactSearch(false);
     setOptions([]);
   };
-  const { userDetails } = useAuth();
+  const { selectedUser } = useAuth();
+  const user_id = selectedUser?.user_id;
 
   const fetchContacts = async () => {
-    const contactList = userDetails?.user_id
-      ? await getContactsByUserId(userDetails?.user_id)
+    const contactList = user_id
+      ? await getContactsByUserId(user_id)
       : [];
     setContacts(contactList);
   };
 
   const fetchCompanyPhone = async () => {
-    const companyPhone = await getCompanyUniqueNumber(userDetails?.company_id);
+    const companyPhone = await getCompanyUniqueNumber(
+      selectedUser?.company_id ?? 0
+    );
     setCompanyPhone(companyPhone?.phoneNumber);
   };
 
@@ -522,10 +525,11 @@ const CallCenter = () => {
   });
 
   const refreshCallHistory = async () => {
+    if (!user_id) return;
     setTableLoading(true);
     try {
       const response = await getCallHistoryData(
-        userDetails?.user_id,
+        user_id,
         callHistoryStatus ? callHistoryStatus : "",
         page * rowsPerPage,
         rowsPerPage,
@@ -550,7 +554,7 @@ const CallCenter = () => {
 
   useEffect(() => {
     refreshCallHistory();
-  }, [callHistoryStatus, page, rowsPerPage]);
+  }, [callHistoryStatus, page, rowsPerPage, user_id]);
 
   useEffect(() => {
     // Get the current contact value from the form
@@ -637,7 +641,7 @@ const CallCenter = () => {
       try {
         if (selectedContact) {
           const bookings = await getBookingsByUser(
-            userDetails?.user_id,
+            user_id!,
             selectedContact?.phone
           );
           setGetBookingByUser(bookings);
@@ -727,7 +731,7 @@ const CallCenter = () => {
 
   const onSubmit = async (data: AddCallSchema) => {
     const callData: ICall = {
-      user_id: userDetails?.user_id,
+      user_id: user_id!,
       to: data.contact.phone,
       from: companyPhone,
       agenda: data.callPurpose,

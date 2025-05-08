@@ -78,7 +78,8 @@ const Sidebar = ({
     resolver: zodResolver(helpSchema),
   });
 
-  const { socketData, userDetails } = useAuth();
+  const { socketData, selectedUser } = useAuth();
+  const company_id = selectedUser?.company_id;
   const [helpModal, setHelpModal] = useState(false);
   const [settingsModal, setSettingsModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -106,8 +107,8 @@ const Sidebar = ({
   // console.log(schedule);
   useEffect(() => {
     const fetchSchedule = async () => {
-      if (!userDetails?.company_id) return;
-      const response = await getAISchedule(Number(userDetails?.company_id));
+      if (!company_id) return;
+      const response = await getAISchedule(Number(company_id));
       setSchedule(
         response?.config ??
           weekDays.map((day) => ({
@@ -120,12 +121,10 @@ const Sidebar = ({
       );
     };
     fetchSchedule();
-  }, [userDetails?.company_id, settingsModal]);
+  }, [company_id, settingsModal]);
 
   // Handle AI schedule submission
   const handleSubmitAISchedule = async () => {
-    if (!userDetails?.company_id) return;
-
     // Validate custom times
     const errors: { [key: string]: string } = {};
     let hasError = false;
@@ -184,7 +183,7 @@ const Sidebar = ({
         return day;
       });
 
-      await postAISchedule(Number(userDetails?.company_id), formattedSchedule);
+      await postAISchedule(Number(company_id), formattedSchedule);
       setSnackbar({
         open: true,
         message: "AI schedule saved successfully",
@@ -467,7 +466,7 @@ const Sidebar = ({
               socketData?.length || "",
               routes.sidebar.messages.link
             )}
-             {renderListItem(
+            {renderListItem(
               undefined,
               "Contacts",
               undefined,

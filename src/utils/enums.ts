@@ -115,7 +115,7 @@ export enum EnShowPurposeUI {
   REQUESTINFO = "Request Info",
 }
 export enum EnUserCreationStatus {
-  SUCCESS = "User created successfully",
+  SUCCESS = "Secretary created successfully",
   FAILED = "User creation failed",
 }
 export enum EnStepProgress {

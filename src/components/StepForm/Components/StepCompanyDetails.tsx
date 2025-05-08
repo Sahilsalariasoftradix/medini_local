@@ -23,12 +23,12 @@ import {
 import CustomSelect from "../../common/CustomSelect";
 import { APPOINTMENT_OPTIONS, COUNTRY_OPTIONS } from "../../../utils/options";
 import { useAuthHook } from "../../../hooks/useAuth";
-import { postCompanyDetails } from "../../../api/userApi";
+import { joinCompany, postCompanyDetails } from "../../../api/userApi";
 import { EnOnboardingStatus } from "../../../utils/enums";
 import { useAuth } from "../../../store/AuthContext";
 
 const CompanyDetails: React.FC = () => {
-  const { updateUserDetails, skipNextStep, setCompanyId } = useStepForm();
+  const { updateUserDetails, goToNextStep, setCompanyId } = useStepForm();
   const { setUserDetails, userDetails } = useAuth();
 
   const { isLoading, setIsLoading } = useAuthHook();
@@ -68,28 +68,49 @@ const CompanyDetails: React.FC = () => {
         max_appointment_time: Number(data.max_appointment_time),
       };
       const updatedDetails = { companyDetails: companyData };
-      // Send company details
+      
+      // Step 3: Send company details and wait for the response
       const response = await postCompanyDetails(companyData);
+
+      // Ensure company ID exists
+      if (!response.company?.id) {
+        throw new Error("Company ID not returned from server");
+      }
+      
+      const companyId = response.company.id;
+      const companyCode = response.company.company_code;
+      
+      // Step 4: Join company and wait for it to complete
+      await joinCompany(companyCode, userDetails.secretaryID!);
+      
+      // Step 5: Update Firestore and wait for it to complete
       await updateUserDetailsInFirestore(userId, {
-        onboardingStatus: EnOnboardingStatus.STATUS_1, // Use updatedStatus directly
+        company_id: companyId,
+        companyCode: companyCode,
+        onboardingStatus: EnOnboardingStatus.STATUS_1,
       });
+      
+      // Step 6: Update local state only after all API calls succeed
       setUserDetails({
         ...userDetails,
-        company_id: response.company?.id,
+        company_id: companyId,
+        company_code: companyCode,
       });
-
-      setCompanyId(response.company?.id);
+      
+      setCompanyId(companyId);
       updateUserDetails({
         ...updatedDetails,
         onboardingStatus: EnOnboardingStatus.STATUS_1,
       });
-      // Step 3: Update context with new user details
-
-      updateUserDetails(updatedDetails);
-      skipNextStep();
+      
+      // Step 7: Only skip to next step if all operations complete successfully
+      goToNextStep();
     } catch (error) {
-      setIsLoading(false);
       console.error(errorSavingUserDetailsMessage, error);
+      // Add user-visible error notification here
+      alert("Failed to save company details. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

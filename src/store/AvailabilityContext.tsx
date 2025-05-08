@@ -179,18 +179,21 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
   const [availabilities, setAvailabilities] = useState<IDayAvailability[]>([]);
   const [isInitialFetch, setIsInitialFetch] = useState(true);
   // const [appointmentId, setAppointmentId] = useState<string | null>(null);
-  const { userDetails } = useAuth();
+  const {selectedUser } = useAuth();
+  const user_id = selectedUser?.user_id;
+      
   const fetchAvailabilityData = useCallback(
     async (date: Date) => {
    
-      if (!userDetails?.user_id) {
+      if (!user_id) {
         console.log("No user ID available for availability fetch");
         return [];
       }
+    
 
       try {
         const response = await getAvailability({
-          user_id: userDetails.user_id,
+          user_id: user_id,
           date: dayjs(date).format("YYYY-MM-DD"),
           range: EnAvailability.WEEK,
         });
@@ -201,7 +204,7 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
         return [];
       }
     },
-    [userDetails?.user_id]
+    [user_id]
   );
 
   const generateDaysFromRange = useCallback(
@@ -255,7 +258,7 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
     []
   );
   const fetchInitialBookings = useCallback(async () => {
-    if (!userDetails?.user_id) {
+    if (!user_id) {
       console.log("Waiting for user details before fetching bookings");
       return;
     }
@@ -263,7 +266,7 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
     try {
       // const bookings = 
       await getBookings({
-        user_id: userDetails.user_id,
+        user_id: user_id,
         date: dayjs().format("YYYY-MM-DD"),
         range: EnAvailability.WEEK,
       });
@@ -271,15 +274,15 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching bookings:", error);
     }
-  }, [userDetails?.user_id]);
+  }, [user_id]);
   useEffect(() => {
-    if (userDetails?.user_id) {
+    if (user_id) {
       fetchInitialBookings();
     }
-  }, [fetchInitialBookings, userDetails?.user_id]);
+  }, [fetchInitialBookings, user_id]);
 
   const fetchInitialAvailability = useCallback(async () => {
-    if (!userDetails?.user_id) {
+    if (!user_id) {
       console.log("Waiting for user details before fetching availability");
       return;
     }
@@ -299,7 +302,7 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
       console.error("Error fetching initial availability:", error);
     }
     setIsInitialFetch(false);
-  }, [fetchAvailabilityData, generateDaysFromRange, userDetails?.user_id]);
+  }, [fetchAvailabilityData, generateDaysFromRange, user_id]);
 
   const refreshAvailability = useCallback(async () => {
     if (!dateRange[0]) return;
@@ -315,10 +318,10 @@ export function AvailabilityProvider({ children }: { children: ReactNode }) {
   }, [dateRange, fetchAvailabilityData, generateDaysFromRange]);
 
   useEffect(() => {
-    if (userDetails?.user_id) {
+    if (user_id) {
       fetchInitialAvailability();
     }
-  }, [fetchInitialAvailability, userDetails?.user_id]);
+  }, [fetchInitialAvailability, user_id]);
 
   useEffect(() => {
     if (!isInitialFetch && dateRange[0] && dateRange[1]) {

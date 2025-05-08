@@ -14,9 +14,9 @@ const StepForm: React.FC = () => {
 
   const steps = [
     <ReasonForUsing />,
-    <NameYourCalendar />,
     <InviteCollaborators />,
     <CompanyDetails />,
+    <NameYourCalendar />,
     <HandleBookings />,
     <YourNewPhone />,
     <ProceedCallCenter />,

@@ -39,7 +39,8 @@ const Contacts = () => {
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
   const [openNewContactDialog, setOpenNewContactDialog] =
     useState<boolean>(false);
-  const { userDetails } = useAuth();
+  const { selectedUser } = useAuth();
+  const user_id = selectedUser?.user_id;
   const debouncedSearchValue = useDebounce(searchValue, 800);
   const [contactToDelete, setContactToDelete] = useState<IContact | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
@@ -75,14 +76,15 @@ const Contacts = () => {
   //   };
 
   const loadInitialData = async () => {
+    if (!user_id) return;
     setLoading(true);
-    const contacts = await getContactsByUserId(userDetails?.user_id);
+    const contacts = await getContactsByUserId(user_id);
     setContacts(contacts);
     setLoading(false);
   };
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [user_id]);
 
   const handleDeleteClick = (contact: IContact) => {
     setContactToDelete(contact);

@@ -210,7 +210,8 @@ export default function AvailabilityCalendar() {
         sunday: "sunday",
       })
     );
-  const { userDetails } = useAuth();
+  const { selectedUser} = useAuth();
+  const user_id = selectedUser?.user_id;
   // Add this useEffect to update transformedWeeklyAvailability when availabilities changes
   useEffect(() => {
     setTransformedWeeklyAvailability(
@@ -254,7 +255,7 @@ export default function AvailabilityCalendar() {
   const fetchBookings = useCallback(async () => {
     try {
       const response = await getBookings({
-        user_id: userDetails?.user_id,
+        user_id: user_id!,
         date: dayjs(today).format("YYYY-MM-DD"),
         range: EnAvailability.DAY,
       });
@@ -487,7 +488,7 @@ export default function AvailabilityCalendar() {
         .format("HH:mm");
       if (isEditing && appointmentId) {
         await updateBooking({
-          user_id: userDetails?.user_id,
+          user_id: user_id!,
           booking_id: Number(appointmentId),
           date: dayjs(data.date).format("YYYY-MM-DD"),
           start_time: data.startTime,
@@ -501,7 +502,7 @@ export default function AvailabilityCalendar() {
         });
       } else {
         await createBooking({
-          user_id: userDetails?.user_id,
+          user_id: user_id!,
           date: dayjs(data.date).format("YYYY-MM-DD"),
           start_time: data.startTime,
           end_time: endTimeFormatted,
@@ -775,7 +776,7 @@ export default function AvailabilityCalendar() {
       }
 
       const payload = {
-        user_id: userDetails?.user_id,
+        user_id: user_id!,
         availabilities: formattedAvailabilities,
       };
 

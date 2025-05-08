@@ -25,7 +25,10 @@ export const CompanyDetailsSchema = z.object({
 
 // Validation schema
 export const CalenderNameSchema = z.object({
-  calenderName: z.string().min(1, "Calender name is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  // phone: z.string().min(1, "Phone number is required"),
 });
 // Type declaration for schema
 export type CalenderNameSchemaType = z.infer<typeof CalenderNameSchema>;
@@ -52,11 +55,12 @@ export const StepFormProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [companyNumber, setCompanyNumber] = useState<string>("");
+  //@ts-ignore
   const [userFormDetails, setUserFormDetails] = useState<IUserDetails>({
     reasonForUsing: "",
     reasonForUsingStep: "",
-    calendarName: "",
-    collaborators: [],
+    // calendarName: "",
+    // collaborators: [],
     companyDetails: {
       company_name: "",
       address_line_one: "",
@@ -67,14 +71,14 @@ export const StepFormProvider: React.FC<{ children: React.ReactNode }> = ({
       max_appointment_time: null!,
     },
 
-    handleBookings: null,
+    // handleBookings: null,
   });
   const { user, loading, userDetails } = useAuth();
 
   useEffect(() => {
     if (!loading) {
       if (userDetails?.onboardingStatus === EnOnboardingStatus.STATUS_1) {
-        setCurrentStep(5);
+        setCurrentStep(3);
       }
     }
   }, [user, loading, userDetails?.onboardingStatus]);
@@ -102,11 +106,12 @@ export const StepFormProvider: React.FC<{ children: React.ReactNode }> = ({
   // Reset the form to its initial state
   const resetForm = () => {
     setCurrentStep(0);
+    //@ts-ignore
     setUserFormDetails({
       reasonForUsing: "",
       reasonForUsingStep: "",
-      calendarName: "",
-      collaborators: [],
+      // calendarName: "",
+      // collaborators: [],
       companyDetails: {
         company_name: "",
         address_line_one: "",
@@ -116,7 +121,7 @@ export const StepFormProvider: React.FC<{ children: React.ReactNode }> = ({
         in_person_appointments: false,
         max_appointment_time: null!,
       },
-      handleBookings: null,
+      // handleBookings: null,
     });
   };
 

@@ -66,7 +66,8 @@ const AddContact = ({
       email: contact?.email || "",
     },
   });
-  const { userDetails } = useAuth();
+  const { selectedUser } = useAuth();
+  const user_id = selectedUser?.user_id;
   const [phone, setPhone] = useState(contact?.phone || "");
   const [formSubmitted, setFormSubmitted] = useState(false);
 
@@ -81,7 +82,7 @@ const AddContact = ({
 
     setIsLoading(true);
     try {
-      await createNewContact({ ...data, user_id: userDetails?.user_id, phone });
+      await createNewContact({ ...data, user_id: user_id!, phone });
       setSnackbarOpen(true);
       setSnackbarSeverity("success");
       setSnackbarMessage("Contact created successfully!");
