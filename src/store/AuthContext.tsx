@@ -8,9 +8,19 @@ import React, {
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { firebaseAuth } from "../firebase/BaseConfig";
 
-import { getMessages, getUserDetails } from "../firebase/AuthService";
-import { IBooking, ICompany, IUserDetails } from "../utils/Interfaces";
-import { getCompany } from "../api/userApi";
+import {
+  getChatContacts,
+  getMessages,
+  getUserDetails,
+} from "../firebase/AuthService";
+import {
+  IBooking,
+  IChatContacts,
+  ICompany,
+  // INewContactData,
+  IUserDetails,
+} from "../utils/Interfaces";
+import { getCompany, getUsersBySecretaryId } from "../api/userApi";
 
 interface IAuthContextType {
   user: User | null;
@@ -38,8 +48,16 @@ interface IAuthContextType {
   selectedUser: IUserDetails | null;
   setSelectedUser: (userId: string) => void;
   clearSelectedUser: () => void;
+  chatContacts: IChatContacts[];
+  loadingChatContacts: boolean;
+  setLoadingChatContacts: (loadingChatContacts: boolean) => void;
+  loadingSecretaryUsers: boolean;
+  setLoadingSecretaryUsers: (loadingSecretaryUsers: boolean) => void;
+  secretaryUsers: IUserDetails[];
+  fetchSecretaryUsers: () => Promise<void>;
 }
 const AuthContext = createContext<IAuthContextType | undefined>(undefined);
+
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -53,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
     localStorage.getItem("selectedUserId")
   );
+  const [chatContacts, setChatContacts] = useState<IChatContacts[]>([]);
 
   const [timer, setTimer] = useState(60000);
 
@@ -63,7 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [loadingCompanyDetails, setLoadingCompanyDetails] = useState(true);
+  const [loadingChatContacts, setLoadingChatContacts] = useState(true);
   const [companyDetails, setCompanyDetails] = useState<ICompany | null>(null);
+  const [secretaryUsers, setSecretaryUsers] = useState<IUserDetails[]>([]);
+  const [loadingSecretaryUsers, setLoadingSecretaryUsers] = useState(true);
   //@ts-ignore
   const [connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected"
@@ -254,6 +276,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, [selectedUserId, newUserInfo]);
 
+  //* Fetch chat contacts on the left bar of the messages page
+  useEffect(() => {
+    setLoadingChatContacts(true);
+    const fetchChatContacts = async () => {
+      if (selectedUser?.user_id) {
+        try {
+          const contacts = await getChatContacts(
+            selectedUser.user_id.toString()
+          );
+          setChatContacts(contacts);
+        } catch (error) {
+          console.error("Error fetching chat contacts:", error);
+        } finally {
+          setLoadingChatContacts(false);
+        }
+      }
+    };
+
+    fetchChatContacts();
+  }, [selectedUser?.user_id]);
+
+  //* Fetch secretary users
+  const fetchSecretaryUsers = async () => {
+    const users = await getUsersBySecretaryId(userDetails?.secretaryID);
+    setSecretaryUsers(users.users);
+  };
+  useEffect(() => {
+    setLoadingSecretaryUsers(true);
+    try {
+      if (userDetails?.secretaryID) {
+        setLoadingSecretaryUsers(true);
+      
+        fetchSecretaryUsers();
+      }
+    } catch (error) {
+      console.error("Error fetching secretary users:", error);
+    } finally {
+      setLoadingSecretaryUsers(false);
+    }
+  }, [userDetails?.secretaryID]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -282,6 +345,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         selectedUser,
         setSelectedUser,
         clearSelectedUser,
+        chatContacts,
+        loadingChatContacts,
+        setLoadingChatContacts,
+        setLoadingSecretaryUsers,
+        loadingSecretaryUsers,
+        secretaryUsers,
+        fetchSecretaryUsers,
       }}
     >
       {children}

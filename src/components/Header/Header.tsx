@@ -31,6 +31,7 @@ import { EnAIStatus } from "../../utils/enums";
 import CommonTextField from "../common/CommonTextField";
 import {
   createUser,
+  deleteUserOnSecretary,
   joinUserViaSecretary,
   updateAIStatus,
 } from "../../api/userApi";
@@ -76,16 +77,22 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
     companyDetails,
     loadingCompanyDetails,
     setTimer,
-    refreshUserDetails,
     setSelectedUser: setGlobalSelectedUser,
     selectedUserId,
-  } = useAuth();
-  const {
+    loadingSecretaryUsers,
+    secretaryUsers,
+    selectedUser: newSelectedUser,
     userDetails: userInfo,
     logout,
-    newUserInfo,
-    selectedUser: newSelectedUser,
+    fetchSecretaryUsers,
   } = useAuth();
+
+  //* Firebase based secretary users
+  // const {
+
+  //   newUserInfo,
+
+  // } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [aiStatusAnchorEl, setAiStatusAnchorEl] = useState<null | HTMLElement>(
@@ -104,6 +111,25 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
       ? EnAIStatus.ENABLED
       : EnAIStatus.DISABLED
   );
+
+  //* Delete user from secretary
+  const deleteUser = async (userId: number) => {
+    setIsLoading(true);
+    try {
+      await deleteUserOnSecretary(userId);
+      await fetchSecretaryUsers();
+      setSnackbarSeverity("success");
+      setSnackbarMessage("User deleted successfully");
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error("Error deleting user on secretary:", error);
+      setSnackbarSeverity("error");
+      setSnackbarMessage("Error deleting user");
+      setSnackbarOpen(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (companyDetails?.ai_enabled !== undefined) {
@@ -211,7 +237,8 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
 
       // Update the users array in Firebase with the combined array
       await updateUsersArray(userId, updatedUsers);
-      await refreshUserDetails();
+      // await refreshUserDetails();
+      await fetchSecretaryUsers();
 
       // Close dialog and show success message
       reset({
@@ -270,7 +297,13 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
         confirmButtonType="error"
         confirmText="Delete"
         cancelText="Cancel"
-        onConfirm={() => setIsDeleteUser(false)}
+        onConfirm={() => {
+          if (!selectedUser?.user_id) return;
+          deleteUser(selectedUser?.user_id);
+          setIsDeleteUser(false);
+        }}
+        loading={isLoading}
+        disabled={isLoading}
       >
         <Typography variant="bodyXLargeSemiBold">
           Are you sure you want to delete{" "}
@@ -608,75 +641,87 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
               <Typography variant="bodyMediumSemiBold" sx={{ px: 2, py: 1 }}>
                 Calendars
               </Typography>
-              {newUserInfo?.map((user) => (
-                <MenuItem
-                  key={user.user_id}
-                  sx={{
-                    justifyContent: "space-between",
-                    bgcolor:
-                      selectedUserId === user.user_id.toString()
-                        ? "primary.light"
-                        : "transparent",
-                    color:
-                      selectedUserId === user.user_id.toString()
-                        ? "#fff"
-                        : "secondary.main",
-                    "&:hover": {
-                      bgcolor:
-                        selectedUserId === user.user_id.toString()
-                          ? "primary.light"
-                          : "transparent",
-                      color:
-                        selectedUserId === user.user_id.toString()
-                          ? "#fff"
-                          : "secondary.main",
-                    },
-                  }}
-                  onClick={() => handleUserSelection(user)}
-                >
-                  <Typography variant="bodyLargeMedium">
-                    {user.first_name} {user.last_name}
-                  </Typography>
-                  <Box>
-                    <IconButton
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent triggering the parent MenuItem onClick
-                        handleSelectUser(user, "edit");
+              {loadingSecretaryUsers ? (
+                <Skeleton variant="text" width={200} height={40} />
+              ) : (
+                <>
+                  {secretaryUsers?.map((user) => (
+                    <MenuItem
+                      key={user.user_id}
+                      sx={{
+                        justifyContent: "space-between",
+                        bgcolor:
+                          selectedUserId === user.user_id.toString()
+                            ? "primary.light"
+                            : "transparent",
+                        color:
+                          selectedUserId === user.user_id.toString()
+                            ? "#fff"
+                            : "secondary.main",
+                        "&:hover": {
+                          bgcolor:
+                            selectedUserId === user.user_id.toString()
+                              ? "primary.light"
+                              : "transparent",
+                          color:
+                            selectedUserId === user.user_id.toString()
+                              ? "#fff"
+                              : "secondary.main",
+                        },
                       }}
-                      size="small"
+                      onClick={() => handleUserSelection(user)}
                     >
-                      <Box
-                        component="img"
-                        src={editIcon}
-                        alt="edit"
-                        width={16}
-                        height={16}
-                      />
-                    </IconButton>
-                    <IconButton
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent triggering the parent MenuItem onClick
-                        handleSelectUser(user, "delete");
-                      }}
-                      size="small"
-                    >
-                      <Box
-                        component="img"
-                        src={deleteIcon}
-                        alt="delete"
-                        width={16}
-                        height={16}
-                      />
-                    </IconButton>
-                  </Box>
-                </MenuItem>
-              ))}
+                      <Typography
+                        variant="bodyLargeMedium"
+                        noWrap
+                        maxWidth={150}
+                      >
+                        {user.first_name} {user.last_name}
+                      </Typography>
+                      <Box>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the parent MenuItem onClick
+                            handleSelectUser(user, "edit");
+                          }}
+                          size="small"
+                        >
+                          <Box
+                            component="img"
+                            src={editIcon}
+                            alt="edit"
+                            width={16}
+                            height={16}
+                          />
+                        </IconButton>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the parent MenuItem onClick
+                            handleSelectUser(user, "delete");
+                          }}
+                          size="small"
+                        >
+                          <Box
+                            component="img"
+                            src={deleteIcon}
+                            alt="delete"
+                            width={16}
+                            height={16}
+                          />
+                        </IconButton>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </>
+              )}
 
               <MenuItem
                 onClick={() => setAddNewUser(true)}
                 sx={{ color: "primary.main" }}
               >
-                + Add New Calendar
+                <Typography variant="bodyLargeMedium">
+                  + Add New Calendar
+                </Typography>
               </MenuItem>
 
               <Box sx={{ borderTop: 1, borderColor: "divider", my: 1 }} />

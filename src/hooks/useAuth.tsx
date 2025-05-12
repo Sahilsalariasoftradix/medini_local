@@ -16,7 +16,7 @@ export const SignUpSchema = z.object({
     .max(20, "Max 20 characters.")
     .refine(
       (password) =>
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&*()\-_+=\\|{};:/?.><])[A-Za-z\d@#$%^&*()\-_+=\\|{};:/?.><]{8,}$/.test(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])[^\s]{8,}$/.test(
           password
         ),
       {

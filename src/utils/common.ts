@@ -211,6 +211,21 @@ export const callPurposeOptions = [
 export const formatDate = (date: string) => {
   return dayjs(date).format("ddd DD/MM/YYYY");
 };
+export   // Get appropriate background color based on color value
+const getStatusColor = (color: string) => {
+  switch (color) {
+    case "green":
+      return "#22C55E"; // Green
+    case "red":
+      return "#FF4747"; // Red
+    case "blue":
+      return "#3B82F6"; // Blue
+    case "yellow":
+      return "#FACC15"; // Yellow
+    default:
+      return "#e0e0e0"; // Grey
+  }
+};
 export const headCells: readonly HeadCell[] = [
   {
     id: "contact",

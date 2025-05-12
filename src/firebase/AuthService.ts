@@ -156,7 +156,6 @@ export const updateUserDetailsInFirestore = async (
   }
 };
 
-
 //* Function to fetch all reasons from the Firestore 'reasons' collection
 export const getReasons = async () => {
   // Get a reference to the Firestore database
@@ -760,27 +759,82 @@ export const getMessages = (
 export const updateUsersArray = async (
   userId: string,
   users: Array<{
-    user_id: number,
-    first_name: string,
-    last_name: string,
-    email: string,
-    phone: string,
-    company_id: number
+    user_id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    company_id: number;
   }>
 ): Promise<void> => {
   try {
     // Reference to the user document in Firestore
     const userRef = doc(firebaseFirestore, EnFirebaseCollections.USERS, userId);
-    
+
     // Update the document with the users array
     await updateDoc(userRef, {
       users: users,
-      updatedAt: serverTimestamp() // Update the timestamp
+      updatedAt: serverTimestamp(), // Update the timestamp
     });
-    
+
     console.log("Users array successfully updated in user document");
   } catch (error) {
     console.error("Error updating users array:", error);
     throw new Error("Failed to update users array in the user document");
+  }
+};
+
+export const getChatContacts = async (userId: string): Promise<any[]> => {
+  try {
+    // Reference the contactList subcollection within the user document
+    const contactsCollectionRef = collection(
+      firebaseFirestore,
+      EnFirebaseCollections.CHAT_CONTACTS,
+      `user_${userId}`,
+      EnFirebaseCollections.CONTACT_LIST
+    );
+
+    // Get all documents in the contactList subcollection
+    const contactsSnapshot = await getDocs(contactsCollectionRef);
+    
+    // Map the documents to an array of contact objects
+    const contacts = contactsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    return contacts;
+  } catch (error) {
+    console.error("Error fetching chat contacts:", error);
+    throw new Error("Failed to retrieve chat contacts");
+  }
+};
+
+export const getChatMessages = async (userId: string, collectionName: string): Promise<any[]> => {
+  try {
+    const messagesCollectionRef = collection(
+      firebaseFirestore,
+      EnFirebaseCollections.MESSAGES,
+      `user_${userId}`,
+      collectionName
+    );
+
+    // Create a query ordered by timestamp
+    const messagesQuery = query(messagesCollectionRef, orderBy("timestamp", "asc"));
+    
+    // Get the documents
+    const messagesSnapshot = await getDocs(messagesQuery);
+    
+    // Map the documents to an array of message objects
+    const messages = messagesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data().timestamp?.toDate() // Convert Firestore timestamp to JS Date
+    }));
+    
+    return messages;
+  } catch (error) {
+    console.error("Error fetching chat messages:", error);
+    throw new Error("Failed to retrieve chat messages");
   }
 };

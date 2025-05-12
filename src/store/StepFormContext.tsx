@@ -14,7 +14,8 @@ export const CompanyDetailsSchema = z.object({
     .min(8, "Office name should be at least 8 characters")
     .max(50, "Office name can be up to 50 characters"),
   address_line_one: z
-    .string().min(1, "Address is required")
+    .string()
+    .min(1, "Address is required")
     .max(50, "Apartment name can be up to 50 characters"),
   address_line_two: z.string().optional(),
   city: z.string().min(1, "City is required"),
@@ -25,8 +26,11 @@ export const CompanyDetailsSchema = z.object({
 
 // Validation schema
 export const CalenderNameSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
+  firstName: z
+    .string()
+    .min(1, "First name is required")
+    .max(20, "Name too long"),
+  lastName: z.string().min(1, "Last name is required").max(20, "Name too long"),
   email: z.string().email("Invalid email address"),
   // phone: z.string().min(1, "Phone number is required"),
 });

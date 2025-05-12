@@ -16,6 +16,8 @@ export enum EnFirebaseCollections {
   CONTACTS = "contacts",
   MESSAGES = "messages",
   CUSTOMERS = "customers",
+  CHAT_CONTACTS = "chat_contacts",
+  CONTACT_LIST = "contactList",
 }
 export enum EnAppointmentOptions {
   APPOINTMENT_1 = "15",

@@ -9,127 +9,53 @@ import {
   Container,
   Paper,
   CircularProgress,
+  Popover,
+  IconButton,
+  Pagination,
+  Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
+  Button,
 } from "@mui/material";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import available from "../../assets/icons/available.svg";
-import active from "../../assets/icons/active.svg";
-import { availabilityIcons } from "../../utils/Icons";
-import active1 from "../../assets/icons/active.svg";
-import { RoundCheckbox } from "../../components/common/RoundCheckbox";
-import { getUserEventLogs } from "../../api/userApi";
-import { IEventLogs } from "../../utils/Interfaces";
+import { getEventLogEnum, getUserEventLogs } from "../../api/userApi";
+import { IEventLogEnum, IEventLogs } from "../../utils/Interfaces";
 import { useAuth } from "../../store/AuthContext";
-
-// Mock event data
-// const mockEvents = [
-//   {
-//     id: 1,
-//     type: "inbound",
-//     name: "MacDonald, J",
-//     time: "9:00, December 25, 2025",
-//     status: "success",
-//     icon1: "person",
-//     icon2: "document",
-//   },
-//   {
-//     id: 2,
-//     type: "inbound",
-//     name: "MacDonald, J",
-//     time: "9:00, December 25, 2025",
-//     status: "error",
-//     icon1: "person",
-//     icon2: "source",
-//   },
-//   {
-//     id: 3,
-//     type: "inbound",
-//     name: "MacDonald, J",
-//     time: "9:00, December 25, 2025",
-//     status: "error",
-//     icon1: "person",
-//     icon2: "document",
-//   },
-//   {
-//     id: 4,
-//     type: "outbound",
-//     name: "MacDonald, J",
-//     time: "9:00, December 25, 2025",
-//     status: "success",
-//     icon1: "person",
-//     icon2: "source",
-//   },
-//   {
-//     id: 5,
-//     type: "outbound",
-//     name: "MacDonald, J",
-//     time: "9:00, December 25, 2025",
-//     status: "warning",
-//     icon1: "person",
-//     icon2: "document",
-//   },
-// ];
+import calendarIcon from "../../assets/icons/calenderIcon.svg";
+import { getStatusColor } from "../../utils/common";
 
 const Events = () => {
-  const [inboundChecked, setInboundChecked] = useState<boolean>(true);
-  const [outboundChecked, setOutboundChecked] = useState<boolean>(false);
   const [eventLogs, setEventLogs] = useState<IEventLogs[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const { selectedUser } = useAuth();
   const user_id = selectedUser?.user_id;
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [eventLogEnum, setEventLogEnum] = useState<IEventLogEnum[]>([]);
+  const [selectedEventType, setSelectedEventType] = useState<string>("");
 
-  // Function to handle inbound checkbox changes
-  const handleInboundChange = () => {
-    // Only allow unchecking if outbound is checked
-    if (inboundChecked && !outboundChecked) {
-      return; // Prevent unchecking when it's the only one checked
-    }
-    setInboundChecked(!inboundChecked);
-  };
+  // Pagination states
+  const [page, setPage] = useState<number>(1);
+  const [offset, setOffset] = useState<number>(0);
+  const [total, setTotal] = useState<number>(0);
+  const limit = 20; // Items per page
 
-  // Function to handle outbound checkbox changes
-  const handleOutboundChange = () => {
-    // Only allow unchecking if inbound is checked
-    if (outboundChecked && !inboundChecked) {
-      return; // Prevent unchecking when it's the only one checked
-    }
-    setOutboundChecked(!outboundChecked);
-  };
+  // API base URL from environment variable
+  const apiBaseUrl = import.meta.env.VITE_MEDINI_API_URL;
 
-  // Filter events based on selected checkboxes
-  // const filteredEvents = mockEvents.filter((event) => {
-  //   if (inboundChecked && event.type === "inbound") return true;
-  //   if (outboundChecked && event.type === "outbound") return true;
-  //   return false;
-  // });
-
-  // Get appropriate icon component
-  const getIcon = (iconType: string | null) => {
-    switch (iconType) {
-      case "incoming":
-        return availabilityIcons.in_person;
-      case "outgoing":
-        return active;
-      case "missed_call":
-        return available;
-      default:
-        return null;
-    }
-  };
-
-  // Get appropriate background color based on color value
-  const getStatusColor = (color: string) => {
-    switch (color) {
-      case "green":
-        return "#22C55E"; // Green
-      case "red":
-        return "#FF4747"; // Red
-      case "blue":
-        return "#3B82F6"; // Blue
-      case "yellow":
-        return "#FACC15"; // Yellow
-      default:
-        return "#e0e0e0"; // Grey
-    }
-  };
+  useEffect(() => {
+    const fetchEventLogEnum = async () => {
+      const eventLogEnum = await getEventLogEnum();
+      setEventLogEnum(eventLogEnum.eventLogEnum);
+    };
+    fetchEventLogEnum();
+  }, []);
 
   // Format date string from ISO format to readable format
   const formatDate = (dateString: string): string => {
@@ -148,21 +74,106 @@ const Events = () => {
     return `${hours}:${minutes}, ${month} ${day}, ${year}`;
   };
 
+  // Format date for API request (YYYY-MM-DD)
+  const formatDateForAPI = (date: Date | null): string | undefined => {
+    if (!date) return undefined;
+    return date.toISOString().split("T")[0];
+  };
+
+  // Clear date filters
+  const clearDateFilters = () => {
+    setStartDate(null);
+    setEndDate(null);
+    setSelectedEventType("");
+    setPage(1);
+    setOffset(0);
+  };
+
+  // Handle page change
+  const handlePageChange = (
+    _event: React.ChangeEvent<unknown>,
+    newPage: number
+  ) => {
+    setPage(newPage);
+    setOffset((newPage - 1) * limit);
+  };
+
+  // Handle event type filter change
+  const handleEventTypeChange = (event: SelectChangeEvent) => {
+    setSelectedEventType(event.target.value);
+    setPage(1);
+    setOffset(0);
+  };
+
   // Fetch event logs
   useEffect(() => {
     const fetchEventLogs = async () => {
+      if (!user_id) return;
       setLoading(true);
       try {
-        const eventLogs = await getUserEventLogs(user_id!);
+        // Only include dates in API call if both are provided
+        const shouldIncludeDates = !startDate || (startDate && endDate);
+
+        const fromDate = shouldIncludeDates
+          ? formatDateForAPI(startDate)
+          : undefined;
+        const toDate = shouldIncludeDates
+          ? formatDateForAPI(endDate)
+          : undefined;
+        const typeId = selectedEventType
+          ? Number(selectedEventType)
+          : undefined;
+
+        const eventLogs = await getUserEventLogs(
+          user_id,
+          limit,
+          offset,
+          fromDate,
+          toDate,
+          typeId
+        );
         setEventLogs(eventLogs.eventLog);
+
+        // If the API returns a total count, use it for pagination
+        if (eventLogs.totalCount !== undefined) {
+          setTotal(eventLogs.totalCount);
+        }
       } catch (error) {
+        setEventLogs([]);
         console.error("Error fetching event logs:", error);
       } finally {
         setLoading(false);
       }
     };
+
+    // If start date is selected but end date is not, don't call the API yet
+    if (startDate && !endDate) {
+      return;
+    }
+
     fetchEventLogs();
-  }, [user_id]);
+  }, [user_id, startDate, endDate, offset, limit, selectedEventType]);
+
+  // Function to get event type name based on event_type_id
+  const getEventTypeName = (eventTypeId: number): string => {
+    const eventType = eventLogEnum.find((item) => item.id === eventTypeId);
+    return eventType ? eventType.name : "Unknown";
+  };
+
+  // Function to get event icon based on event_type_id with full URL
+  const getEventTypeIcon = (eventTypeId: number): string | null => {
+    const eventType = eventLogEnum.find((item) => item.id === eventTypeId);
+    if (!eventType || !eventType.icons) return null;
+
+    // If the icon path is already a full URL, return it as is
+    if (eventType.icons.startsWith("http")) {
+      return eventType.icons;
+    }
+
+    // Otherwise, prepend the API base URL
+    return `${apiBaseUrl.split("api/v1")[0]}${eventType.icons.startsWith("/") ? "" : "/"
+      }${eventType.icons.substring(1)}`;
+  };
 
   return (
     <Container maxWidth={false} sx={{ p: 3 }}>
@@ -179,21 +190,89 @@ const Events = () => {
             Event Log
           </Typography>
 
-          <Box display={"flex"} gap={2}>
-            <RoundCheckbox
-              checked={inboundChecked}
-              onChange={handleInboundChange}
-              checkedIconSize={30}
-              label="Inbound"
-              iconSize={30}
-            />
-            <RoundCheckbox
-              checked={outboundChecked}
-              onChange={handleOutboundChange}
-              checkedIconSize={30}
-              label="Outbound"
-              iconSize={30}
-            />
+          <Box display={"flex"} gap={2} alignItems="center">
+            <Box position="relative">
+              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
+                <img width={20} src={calendarIcon} alt="calendar" />
+              </IconButton>
+              {(startDate && endDate) && (
+                <Box
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  width={8}
+                  height={8}
+                  borderRadius="50%"
+                  bgcolor="red"
+                />
+              )}
+            </Box>
+            <Popover
+              open={Boolean(anchorEl)}
+              anchorEl={anchorEl}
+              onClose={() => setAnchorEl(null)}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "center",
+              }}
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "center",
+              }}
+            >
+              <Box sx={{ p: 0 }}>
+                <DatePicker
+                  selectsRange={true}
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(update) => {
+                    setStartDate(update[0]);
+                    setEndDate(update[1]);
+                    if (update[0] && update[1]) {
+                      setAnchorEl(null);
+                    }
+                  }}
+                  inline
+                />
+              </Box>
+            </Popover>
+
+            {/* Event Type Filter */}
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel id="event-type-select-label">Event Type</InputLabel>
+              <Select
+                labelId="event-type-select-label"
+                id="event-type-select"
+                value={selectedEventType}
+                label="Event Type"
+                onChange={handleEventTypeChange}
+              >
+                {/* <MenuItem value="">
+                  <em>All</em>
+                </MenuItem> */}
+                {eventLogEnum.map((eventType) => (
+                  <MenuItem key={eventType.id} value={eventType.id.toString()}>
+                    {eventType.name.charAt(0).toUpperCase() +
+                      eventType.name.slice(1)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {(startDate || endDate || selectedEventType) && (
+              <Button
+                onClick={clearDateFilters}
+                variant="contained"
+                color="primary"
+                sx={{
+                  bgcolor: "red",
+                  "&:hover": {
+                    bgcolor: "red",
+                  },
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
           </Box>
         </Box>
 
@@ -201,18 +280,12 @@ const Events = () => {
           sx={{
             boxShadow: "0px 5px 10px 0px #0000001A",
             border: " 1px solid #E2E8F0",
+            maxHeight: "calc(100vh - 310px)",
+            overflow: "auto",
           }}
           elevation={2}
         >
           <Table sx={{ width: "100%" }}>
-            {/* <TableHead>
-              <TableRow>
-                <TableCell width="50px">Event</TableCell>
-                <TableCell width="50px"></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-              </TableRow>
-            </TableHead> */}
             {loading ? (
               <Box
                 sx={{
@@ -234,7 +307,9 @@ const Events = () => {
                 }}
               >
                 <Typography variant="h6" color="text.secondary">
-                  User event log not found
+                  {startDate || endDate || selectedEventType
+                    ? "No events match your filter criteria"
+                    : "User event log not found"}
                 </Typography>
               </Box>
             ) : (
@@ -243,17 +318,16 @@ const Events = () => {
                   <TableRow key={event.id} hover>
                     <TableCell>
                       <Box sx={{ display: "flex", justifyContent: "center" }}>
-                        <img src={active1} alt={event.type} width="16" />
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", justifyContent: "center" }}>
-                        <img
-                          //@ts-ignore
-                          src={getIcon(event?.type)}
-                          alt={event?.type}
-                          width="16"
-                        />
+                        {event.event_type_id && (
+                          <img
+                            height="50"
+                            width="50"
+                            src={
+                              getEventTypeIcon(event.event_type_id) || available
+                            }
+                            alt={getEventTypeName(event.event_type_id)}
+                          />
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -267,11 +341,19 @@ const Events = () => {
                           borderRadius: "100px",
                           px: 2,
                           height: "31px",
-                          maxWidth: "170px",
+                          maxWidth: "200px",
                           width: "auto",
                         }}
                       >
                         {event.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="bodyLargeMedium">
+                        {event.event_type_id
+                          ? getEventTypeName(event.event_type_id).charAt(0).toUpperCase() +
+                          getEventTypeName(event.event_type_id).slice(1)
+                          : event.name}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -285,6 +367,32 @@ const Events = () => {
             )}
           </Table>
         </Paper>
+        {/* Pagination */}
+        {eventLogs.length > 0 && (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+            <Stack spacing={2}>
+              <Pagination
+                variant="outlined"
+                shape="rounded"
+                count={Math.ceil(total / limit) || 1}
+                page={page}
+                onChange={handlePageChange}
+                color="primary"
+                sx={{
+                  "& .MuiPaginationItem-previousNext": {
+                    border: "none",
+                    "&:hover": {
+                      backgroundColor: "transparent",
+                      border: "none",
+                    },
+                  },
+                }}
+              // showFirstButton
+              // showLastButton
+              />
+            </Stack>
+          </Box>
+        )}
       </Box>
     </Container>
   );

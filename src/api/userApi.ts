@@ -170,7 +170,7 @@ export const createCall = async (callData: ICall) => {
     throw error;
   }
 };
-
+// Clear booking API
 export const clearBooking = async (bookingIds: IBookingIds) => {
   try {
     const response = await apiClient.post(`bookings/clear`, bookingIds);
@@ -216,6 +216,7 @@ export const getCallHistoryData = async (
     throw error;
   }
 };
+// Delete call API
 export const deleteCall = async (callId: number) => {
   try {
     const response = await apiClient.delete(`outbound-call-grok`, {
@@ -229,6 +230,7 @@ export const deleteCall = async (callId: number) => {
     throw error;
   }
 };
+// Get company details API
 export const getCompanyDetails = async (page = 1) => {
   try {
     const response = await apiClient.get(`company/users?page=${page}&limit=20`);
@@ -238,7 +240,7 @@ export const getCompanyDetails = async (page = 1) => {
     throw error;
   }
 };
-
+// Send verification code API
 export const sendVerificationCode = async (
   phoneNumber: string,
   customerName: string
@@ -255,7 +257,7 @@ export const sendVerificationCode = async (
     throw error;
   }
 };
-
+// Verify verification code API
 export const verifyVerificationCode = async (
   phoneNumber: string,
   verificationCode: string
@@ -271,6 +273,7 @@ export const verifyVerificationCode = async (
     throw error;
   }
 };
+// Get customer bookings API
 export const getCustomerBookings = async (
   companyId: number,
   phoneNumber: string,
@@ -286,6 +289,7 @@ export const getCustomerBookings = async (
     throw error;
   }
 };
+// Post user query API
 export const postUserQuery = async (email: string, message: string) => {
   try {
     const resp = await apiClient.post(`users/inquiry`, {
@@ -298,6 +302,7 @@ export const postUserQuery = async (email: string, message: string) => {
     throw error;
   }
 };
+// Post AI schedule API
 export const postAISchedule = async (
   companyId: number,
   schedule: IAISchedule[]
@@ -313,7 +318,7 @@ export const postAISchedule = async (
     throw error;
   }
 };
-
+// Get AI schedule API
 export const getAISchedule = async (companyId: number) => {
   try {
     const response = await apiClient.get(`config?company_id=${companyId}`);
@@ -348,12 +353,41 @@ export const updateAIStatus = async (companyId: number, aiStatus: boolean) => {
     throw error;
   }
 };
-export const getUserEventLogs = async (userId: number) => {
+// Get user event logs API
+export const getUserEventLogs = async (
+  userId: number,
+  limit?: number,
+  offset?: number,
+  fromDate?: string,
+  toDate?: string,
+  typeId?: number
+) => {
   try {
-    const response = await apiClient.get(`user/event-log/${userId}`);
+    let url = `user/event-log/${userId}?`;
+    const params = new URLSearchParams();
+
+    if (limit !== undefined) params.append("limit", limit.toString());
+    if (offset !== undefined) params.append("offset", offset.toString());
+    if (fromDate) params.append("from_date", fromDate);
+    if (toDate) params.append("to_date", toDate);
+    if (typeId !== undefined) params.append("type_id", typeId.toString());
+
+    url += params.toString();
+
+    const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
     console.error("Error getting user event logs:", error);
+    throw error;
+  }
+};
+// Event log Enum API
+export const getEventLogEnum = async () => {
+  try {
+    const response = await apiClient.get(`user/event-log/enum`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting event log enum:", error);
     throw error;
   }
 };
@@ -383,6 +417,28 @@ export const joinUserViaSecretary = async (
     return response.data;
   } catch (error) {
     console.error("Error joining user via secretary:", error);
+    throw error;
+  }
+};
+// Get users by secretary ID API
+export const getUsersBySecretaryId = async (secretaryId: number) => {
+  try {
+    const response = await apiClient.get(
+      `secretary/users?secretary_id=${secretaryId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting users:", error);
+    throw error;
+  }
+};
+// Delete user on secretary API
+export const deleteUserOnSecretary = async (userId: number) => {
+  try {
+    const response = await apiClient.delete(`secretary/user/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting user on secretary:", error);
     throw error;
   }
 };

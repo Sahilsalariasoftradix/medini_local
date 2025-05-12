@@ -16,9 +16,14 @@ import search from "../../assets/icons/Search.svg";
 import CommonTextField from "../common/CommonTextField";
 import useDebounce from "../../hooks/useDebounce";
 import { useAuth } from "../../store/AuthContext";
-import { sendMessageToPatient } from "../../firebase/AuthService";
+import {
+  getChatMessages,
+  sendMessageToPatient,
+} from "../../firebase/AuthService";
 import { stringToColor } from "../../utils/common";
 import { EnMessageSender } from "../../utils/enums";
+import { IChatContacts } from "../../utils/Interfaces";
+import dayjs from "dayjs";
 const sidebarStyles = {
   minWidth: 350,
   borderRight: "1px solid #E2E8F0",
@@ -67,14 +72,19 @@ const messageAreaStyles = {
 };
 
 const Messages = () => {
-  const { messages } = useAuth();
+  const { chatContacts, messages, loadingChatContacts, selectedUser } =
+    useAuth();
+  const [userMessages, setUserMessages] = useState<any>([]);
+
   const [searchValue, setSearchValue] = useState<string>("");
+  const [loadingMessages, setLoadingMessages] = useState(false);
   // const [messageHistory, setMessageHistory] = useState<{
   //   [contactId: string]: any[];
   // }>({});
   // const [patients, setPatients] = useState<any>({});
   // console.log(patients);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  console.log(selectedPatient, "selectedPatient");
 
   // Add effect to set initial selected patient from messages
   useEffect(() => {
@@ -126,8 +136,9 @@ const Messages = () => {
   //   };
   // }, []);
 
-  const handlePatientSelect = useCallback((patient: any) => {
+  const handlePatientSelect = useCallback((patient: IChatContacts) => {
     setSelectedPatient(patient);
+    setUserMessages([]);
   }, []);
 
   const handleSendMessage = async (e: any) => {
@@ -152,17 +163,16 @@ const Messages = () => {
 
   //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
-  
-  // Filter messages based on search term
-  const filteredMessages = messages && messages.length > 0 
-    ? messages.filter((contact: any) => 
-        contact.contactName.toLowerCase().includes(debouncedSearchValue.toLowerCase())
-      )
-    : [];
 
-  //@ts-ignore
-  const { socketData, socket, message, setMessage, userDetails } = useAuth();
-  // console.log(socketData);
+  // Filter messages based on search term
+  const filteredMessages =
+    messages && messages.length > 0
+      ? messages.filter((contact: any) =>
+          contact.contactName
+            .toLowerCase()
+            .includes(debouncedSearchValue.toLowerCase())
+        )
+      : [];
 
   // Scroll to bottom of messages when messages change
   useEffect(() => {
@@ -171,35 +181,76 @@ const Messages = () => {
     }
   }, [selectedPatient?.messages]);
 
+  useEffect(() => {
+    setLoadingMessages(true);
+    // Check both selectedUser and selectedPatient exist and have the required properties
+    if (selectedUser?.user_id && selectedPatient?.contactName) {
+      const fetchChatMessages = async () => {
+        try {
+          // Ensure user_id is converted to string properly
+          const userId = String(selectedUser.user_id);
+
+          // Log what we're trying to fetch for debugging
+          console.log(
+            `Fetching messages for user ${userId} and contact ${selectedPatient.contactName}`
+          );
+
+          const messages = await getChatMessages(
+            userId,
+            selectedPatient.contactName
+          );
+
+          console.log("Fetched messages:", messages);
+          setUserMessages([
+            {
+              ...messages[messages.length - 1],
+              sender: EnMessageSender.MEDINI,
+            },
+          ]);
+        } catch (error) {
+          console.error("Error fetching chat messages:", error);
+        } finally {
+          setLoadingMessages(false);
+        }
+      };
+
+      fetchChatMessages();
+    } else {
+      console.log("Missing data for fetching messages:", {
+        userId: selectedUser?.user_id,
+        contactName: selectedPatient?.contactName,
+      });
+    }
+  }, [selectedUser?.user_id, selectedPatient?.contactName]);
   // Helper function to format timestamp based on if it's today or not
   const formatMessageTime = (timestamp: any) => {
     const messageDate = new Date(
       timestamp.seconds * 1000 + timestamp.nanoseconds / 1e6
     );
     const today = new Date();
-    
+
     // Check if the message is from today
-    const isToday = 
+    const isToday =
       messageDate.getDate() === today.getDate() &&
       messageDate.getMonth() === today.getMonth() &&
       messageDate.getFullYear() === today.getFullYear();
-    
+
     if (isToday) {
       // Show only time for today's messages
       return messageDate.toLocaleString(undefined, {
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
       });
     } else {
       // Show date and time for older messages
       return messageDate.toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
       });
     }
   };
@@ -225,9 +276,9 @@ const Messages = () => {
 
         {/* Contact list items */}
         <Box>
-          {messages &&
-            messages.length > 0 &&
-            filteredMessages.map((contact: any, index: number) => (
+          {chatContacts &&
+            chatContacts.length > 0 &&
+            chatContacts.map((contact: IChatContacts, index: number) => (
               <Box
                 key={index}
                 sx={{
@@ -271,7 +322,7 @@ const Messages = () => {
                       {contact.contactName}
                     </Typography>
                     <Typography variant="bodyMediumMedium">
-                      {formatMessageTime(contact.timestamp)}
+                      {formatMessageTime(contact.lastMessageAt)}
                     </Typography>
                   </Box>
                   {/* <Box
@@ -316,7 +367,6 @@ const Messages = () => {
               </Box>
             ))}
           {messages && messages.length > 0 && filteredMessages.length === 0 && (
-
             <Box
               sx={{
                 display: "flex",
@@ -325,29 +375,30 @@ const Messages = () => {
                 p: 4,
               }}
             >
-              <Box  sx={{ width:"300px"}}>
-
-              <Typography className="truncate"  variant="bodyLargeExtraBold">
-                No contacts found matching "{searchValue}"
-              </Typography>
+              <Box sx={{ width: "300px" }}>
+                <Typography className="truncate" variant="bodyLargeExtraBold">
+                  No contacts found matching "{searchValue}"
+                </Typography>
               </Box>
             </Box>
           )}
-          {messages && messages.length === 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "calc(100vh - 320px)",
-              }}
-            >
-              <Typography variant="bodyLargeExtraBold">
-                No messages yet
-              </Typography>
-            </Box>
-          )}
-          {loading && messages.length === 0 && (
+          {!loadingChatContacts &&
+            chatContacts &&
+            chatContacts.length === 0 && (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "calc(100vh - 320px)",
+                }}
+              >
+                <Typography variant="bodyLargeExtraBold">
+                  No messages yet
+                </Typography>
+              </Box>
+            )}
+          {loadingChatContacts && chatContacts.length === 0 && (
             <Box
               sx={{
                 display: "flex",
@@ -385,16 +436,28 @@ const Messages = () => {
 
           {/* Messages area */}
           <Box sx={messageAreaStyles} ref={messageAreaRef}>
-            {selectedPatient &&
-              (selectedPatient.message ? (
+            {loadingMessages ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                }}
+              >
+                <CircularProgress size={40} />
+              </Box>
+            ) : (
+              userMessages &&
+              (userMessages.length > 0 ? (
                 // [...selectedPatient.messages].reverse().map((msg: any) => (
                 <Box
-                  key={selectedPatient.id}
+                  key={userMessages[0].id}
                   sx={{
                     display: "flex",
                     flexDirection: "column",
                     alignItems:
-                      selectedPatient.sender !== EnMessageSender.MEDINI
+                      userMessages[0].sender !== EnMessageSender.MEDINI
                         ? "flex-end"
                         : "flex-start",
                     mb: 2,
@@ -405,7 +468,7 @@ const Messages = () => {
                       display: "flex",
                       alignItems: "center",
                       justifyContent:
-                        selectedPatient.sender !== EnMessageSender.MEDINI
+                        userMessages[0].sender !== EnMessageSender.MEDINI
                           ? "flex-end"
                           : "flex-start",
                     }}
@@ -431,40 +494,40 @@ const Messages = () => {
                         p: 1.5,
                         borderRadius: "16px",
                         borderBottomRightRadius:
-                          selectedPatient.sender !== EnMessageSender.MEDINI
+                          userMessages[0].sender !== EnMessageSender.MEDINI
                             ? 0
                             : "16px",
                         borderBottomLeftRadius:
-                          selectedPatient.sender !== EnMessageSender.MEDINI
+                          userMessages[0].sender !== EnMessageSender.MEDINI
                             ? "16px"
                             : 0,
                         bgcolor:
-                          selectedPatient.sender !== EnMessageSender.MEDINI
+                          userMessages[0].sender !== EnMessageSender.MEDINI
                             ? "primary.main"
                             : "grey.100",
                         color:
-                          selectedPatient.sender !== EnMessageSender.MEDINI
+                          userMessages[0].sender !== EnMessageSender.MEDINI
                             ? "white"
                             : "inherit",
                       }}
                     >
-                      {selectedPatient.sender !== EnMessageSender.MEDINI ? (
+                      {userMessages[0].sender !== EnMessageSender.MEDINI ? (
                         <Typography variant="body1">
                           {/* Hey! I just booked this patient{" "}
                             {selectedPatient.message} for an appointment on{" "}
                             {selectedPatient.message} at{" "}
                             {selectedPatient.message} o'clock with{" "} */}
-                          {selectedPatient.message}
+                          {userMessages[0].message}
                         </Typography>
                       ) : (
                         <>
                           <Typography variant="body1">
-                            {selectedPatient.message}
+                            {userMessages[0].message}
                           </Typography>
                         </>
                       )}
                     </Box>
-                    {selectedPatient.sender !== EnMessageSender.MEDINI && (
+                    {userMessages[0].sender !== EnMessageSender.MEDINI && (
                       <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
                         <img src={share} alt="share" />
                       </IconButton>
@@ -478,18 +541,20 @@ const Messages = () => {
                       mt: 0.5,
                       gap: 1,
                       ml:
-                        selectedPatient.sender !== EnMessageSender.MEDINI
+                        userMessages[0].sender !== EnMessageSender.MEDINI
                           ? 0
                           : 0,
                     }}
                   >
                     <Typography variant="bodySmallExtraBold" ml={1}>
-                      {selectedPatient.sender !== EnMessageSender.MEDINI
+                      {userMessages[0].sender !== EnMessageSender.MEDINI
                         ? "You"
-                        : selectedPatient.contactName}
+                        : userMessages[0].contactName}
                     </Typography>
                     <Typography variant="bodySmallMedium" color="grey.500">
-                      {formatMessageTime(selectedPatient.timestamp)}
+                      {dayjs(userMessages[0].timestamp).format(
+                        "YYYY-MM-DD HH:mm:ss"
+                      )}
                     </Typography>
                   </Box>
                 </Box>
@@ -507,7 +572,8 @@ const Messages = () => {
                     No messages yet. Start the conversation!
                   </Typography>
                 </Box>
-              ))}
+              ))
+            )}
           </Box>
 
           {/* Message input area */}

@@ -62,7 +62,17 @@ export interface IStepFormContextType {
   companyNumber: string;
   setCompanyNumber: Dispatch<SetStateAction<string>>;
 }
-
+export interface IEventLogEnum {
+  id: number;
+  name: string;
+  icons: string;
+}
+export interface IChatContacts{
+  id: string;
+  contactName: string;
+  createdAt: string;
+  lastMessageAt: string;
+}
 export interface IHeaderProps {
   isMobile: boolean;
   open: boolean;
@@ -442,4 +452,7 @@ export interface IEventLogs{
   name:string;
   type:string;
   created_at:string;
+  event_type_id:number;
+  event_type_name:string;
+  event_type_icon:string;
 }
