@@ -254,6 +254,7 @@ export default function AvailabilityCalendar() {
 
   const fetchBookings = useCallback(async () => {
     try {
+      if (!user_id) return;
       const response = await getBookings({
         user_id: user_id!,
         date: dayjs(today).format("YYYY-MM-DD"),
@@ -264,7 +265,7 @@ export default function AvailabilityCalendar() {
       console.error("Error fetching bookings:", error);
       setBookings([]);
     }
-  }, [today]);
+  }, [today,user_id]);
 
   const getSlots = useCallback(() => {
     const day = days.find(
@@ -953,6 +954,7 @@ export default function AvailabilityCalendar() {
               <Box width={"100%"} sx={{ minWidth: "80px" }}>
                 {!loading ? (
                   getSlots().map((hour, index) => {
+                    // console.log(hour, "hour")
                     const booking = hour.bookingInfo
                       ? hour.bookingInfo.booking
                       : findBookingForTimeSlot(hour.time);

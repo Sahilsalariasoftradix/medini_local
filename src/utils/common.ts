@@ -9,7 +9,7 @@ import { overRideSvgColor } from "./filters";
 import { z } from "zod";
 import { Data, HeadCell } from "./Interfaces";
 
-// Function to get pathname for page
+//* Function to get pathname for page
 export const getPageNameFromPath = (path: string) => {
   const pathSegment = path.split("/")[1] || "Dashboard";
   return pathSegment
@@ -17,7 +17,7 @@ export const getPageNameFromPath = (path: string) => {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 };
-// Function for max form heights
+//* Function for max form heights
 export const getMaxHeight = () => ({
   maxHeight: {
     xs: "calc(100vh - 200px)",
@@ -25,6 +25,7 @@ export const getMaxHeight = () => ({
     xl: "100%",
   },
 });
+//* Function to convert avatar background color
 export const stringToColor = (str: string) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -37,6 +38,7 @@ export const stringToColor = (str: string) => {
   }
   return color;
 };
+//* Function to map api status to enum
 export const mapApiStatusToEnum = (status: string): EnBookings => {
   switch (status.toLowerCase()) {
     case "active":
@@ -53,6 +55,7 @@ export const mapApiStatusToEnum = (status: string): EnBookings => {
       return EnBookings.Available;
   }
 };
+//* Function to format time slot
 export const formatTimeSlot = (slot: any) => {
   if (!slot || !slot.from || !slot.to) return "Unavailable";
 

@@ -187,7 +187,7 @@ const Events = () => {
           }}
         >
           <Typography variant="h4" component="h1">
-            Event Log
+            Account History
           </Typography>
 
           <Box display={"flex"} gap={2} alignItems="center">
@@ -308,8 +308,8 @@ const Events = () => {
               >
                 <Typography variant="h6" color="text.secondary">
                   {startDate || endDate || selectedEventType
-                    ? "No events match your filter criteria"
-                    : "User event log not found"}
+                    ? "No account history match your filter criteria"
+                    : "User account history not found"}
                 </Typography>
               </Box>
             ) : (

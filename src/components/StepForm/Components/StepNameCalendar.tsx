@@ -26,7 +26,7 @@ import CommonSnackbar from "../../common/CommonSnackbar";
 
 const NameYourCalendar: React.FC = () => {
   const { skipNextStep } = useStepForm();
-  const { userDetails, setUserDetails } = useAuth();
+  const { userDetails, setUserDetails,setSelectedUser } = useAuth();
   const [phone, setPhone] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
   const {
@@ -107,6 +107,8 @@ const NameYourCalendar: React.FC = () => {
       //   user_id: responseData.user.user_id,
       // });
       skipNextStep();
+      setSelectedUser(responseData.user.user_id!.toString());
+      localStorage.setItem("selectedUserId", responseData.user.user_id!.toString());
     } catch (error: any) {
       console.log(error.message);
       setSnackbarSeverity("error");

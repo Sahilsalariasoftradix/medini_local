@@ -17,10 +17,10 @@ import { IHeaderProps, IUser, IUserDetails } from "../../utils/Interfaces";
 import { useState, useEffect } from "react";
 import down from "../../assets/icons/arrow-down.svg";
 // import profile1 from "../../assets/images/profile-1.svg";
-import profile2 from "../../assets/images/profile-2.svg";
+// import profile2 from "../../assets/images/profile-2.svg";
 import { useAuth } from "../../store/AuthContext";
 import { useLocation } from "react-router-dom";
-import { getPageNameFromPath } from "../../utils/common";
+import { getPageNameFromPath, stringToColor } from "../../utils/common";
 import CommonDialog from "../common/CommonDialog";
 import deleteIcon from "../../assets/icons/delete-tr.svg";
 import editIcon from "../../assets/icons/edit-table.svg";
@@ -86,7 +86,7 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
     logout,
     fetchSecretaryUsers,
   } = useAuth();
-
+  // console.log(secretaryUsers)
   //* Firebase based secretary users
   // const {
 
@@ -111,9 +111,14 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
       ? EnAIStatus.ENABLED
       : EnAIStatus.DISABLED
   );
+  //* Fetch secretary users initially
+  useEffect(() => {
+    fetchSecretaryUsers();
+  }, []);
 
   //* Delete user from secretary
   const deleteUser = async (userId: number) => {
+    if (secretaryUsers.length === 1) return;
     setIsLoading(true);
     try {
       await deleteUserOnSecretary(userId);
@@ -183,13 +188,24 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
 
   const handleAiStatusChange = (status: EnAIStatus) => {
     if (!companyDetails?.id) return;
-    updateAIStatus(
-      companyDetails?.id,
-      status === EnAIStatus.ENABLED ? true : false
-    );
-    setCurrentAiStatus(status);
-    setTimer(60000);
-    handleAiClose();
+    try {
+      updateAIStatus(
+        companyDetails?.id,
+        status === EnAIStatus.ENABLED ? true : false
+      );
+      setCurrentAiStatus(status);
+      setSnackbarSeverity("success");
+      setSnackbarMessage(
+        status === EnAIStatus.ENABLED
+          ? "AI enabled successfully"
+          : "AI disabled successfully"
+      );
+      setSnackbarOpen(true);
+      setTimer(60000);
+      handleAiClose();
+    } catch (error) {
+      console.error("Error updating AI status:", error);
+    }
   };
 
   const onSubmit: SubmitHandler<CalenderNameSchemaType> = async (data) => {
@@ -268,6 +284,7 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
     if (action === "edit") {
       setIsEditUser(true);
     } else {
+      if (secretaryUsers.length === 1) return;
       setIsDeleteUser(true);
     }
   };
@@ -584,9 +601,14 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
                 sx={{
                   width: 32,
                   height: 32,
+                  bgcolor: stringToColor(newSelectedUser?.first_name || ""),
                 }}
-                src={profile2}
-              />
+              >
+                <Typography variant="bodyLargeSemiBold" color="white">
+                  {newSelectedUser?.first_name?.charAt(0).toUpperCase()}
+                  {newSelectedUser?.last_name?.charAt(0).toUpperCase()}
+                </Typography>
+              </Avatar>
               <Typography variant="bodyLargeExtraBold" color="secondary.main">
                 {newSelectedUser ? newSelectedUser?.first_name : "Username"}
               </Typography>
@@ -765,6 +787,12 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
               </Typography>
             </CommonDialog>
           </Box>
+          <CommonSnackbar
+            open={snackbarOpen}
+            message={snackbarMessage}
+            severity={snackbarSeverity}
+            onClose={handleSnackbarClose}
+          />
         </Toolbar>
       </Container>
     </AppBar>

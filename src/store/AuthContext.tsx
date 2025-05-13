@@ -55,9 +55,9 @@ interface IAuthContextType {
   setLoadingSecretaryUsers: (loadingSecretaryUsers: boolean) => void;
   secretaryUsers: IUserDetails[];
   fetchSecretaryUsers: () => Promise<void>;
+  fetchChatContacts: () => Promise<void>;
 }
 const AuthContext = createContext<IAuthContextType | undefined>(undefined);
-
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -71,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
     localStorage.getItem("selectedUserId")
   );
+
   const [chatContacts, setChatContacts] = useState<IChatContacts[]>([]);
 
   const [timer, setTimer] = useState(60000);
@@ -260,41 +261,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Automatically select the first user if none is selected when users are loaded
+  // commented out for now as we are using secretary users now from API
+  // useEffect(() => {
+  //   if (newUserInfo && newUserInfo.length > 0 && !selectedUserId) {
+  //     // If there are users but none is selected, select the first one
+  //     setSelectedUser(newUserInfo[0].user_id.toString());
+  //   }
+  // }, [newUserInfo, selectedUserId]);
+
   useEffect(() => {
-    if (newUserInfo && newUserInfo.length > 0 && !selectedUserId) {
+    if (secretaryUsers && secretaryUsers.length > 0 && !selectedUserId) {
       // If there are users but none is selected, select the first one
-      setSelectedUser(newUserInfo[0].user_id.toString());
+      setSelectedUser(secretaryUsers[0].user_id.toString());
     }
-  }, [newUserInfo, selectedUserId]);
+  }, [secretaryUsers, selectedUserId]);
 
   // Make sure the selected user ID is a string since we're comparing it in the useMemo
   const selectedUser = useMemo(() => {
-    if (!selectedUserId || !newUserInfo) return null;
+    if (!selectedUserId || !secretaryUsers) return null;
     return (
-      newUserInfo.find((user) => user.user_id.toString() === selectedUserId) ||
-      null
+      secretaryUsers.find(
+        (user) => user.user_id.toString() === selectedUserId
+      ) || null
     );
-  }, [selectedUserId, newUserInfo]);
+  }, [selectedUserId, secretaryUsers]);
 
   //* Fetch chat contacts on the left bar of the messages page
+  const fetchChatContacts = async () => {
+    if (selectedUser?.user_id) {
+      try {
+        const contacts = await getChatContacts(selectedUser.user_id.toString());
+        setChatContacts(contacts);
+      } catch (error) {
+        console.error("Error fetching chat contacts:", error);
+      } finally {
+        setLoadingChatContacts(false);
+      }
+    }
+  };
   useEffect(() => {
     setLoadingChatContacts(true);
-    const fetchChatContacts = async () => {
-      if (selectedUser?.user_id) {
-        try {
-          const contacts = await getChatContacts(
-            selectedUser.user_id.toString()
-          );
-          setChatContacts(contacts);
-        } catch (error) {
-          console.error("Error fetching chat contacts:", error);
-        } finally {
-          setLoadingChatContacts(false);
-        }
-      }
-    };
-
-    fetchChatContacts();
+    if (selectedUser?.user_id) {
+      fetchChatContacts();
+    }
   }, [selectedUser?.user_id]);
 
   //* Fetch secretary users
@@ -302,12 +311,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const users = await getUsersBySecretaryId(userDetails?.secretaryID);
     setSecretaryUsers(users.users);
   };
+
   useEffect(() => {
     setLoadingSecretaryUsers(true);
     try {
       if (userDetails?.secretaryID) {
         setLoadingSecretaryUsers(true);
-      
+
         fetchSecretaryUsers();
       }
     } catch (error) {
@@ -352,6 +362,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         loadingSecretaryUsers,
         secretaryUsers,
         fetchSecretaryUsers,
+        fetchChatContacts
       }}
     >
       {children}

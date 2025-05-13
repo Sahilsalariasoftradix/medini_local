@@ -46,7 +46,7 @@ const SlotBookingForm: React.FC<ISlotBookingFormProps> = ({
       : [];
     setContacts(contactList);
   };
-  console.log(contacts)
+  // console.log(contacts)
   useEffect(() => {
     fetchContacts();
   }, [control._formValues?.contact]);

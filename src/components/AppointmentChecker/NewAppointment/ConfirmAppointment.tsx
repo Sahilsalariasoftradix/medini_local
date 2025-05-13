@@ -28,7 +28,7 @@ const ConfirmAppointment = () => {
   
   const sendCode = async () => {
 
-console.log(!isResendDisabled || timer === 0)
+// console.log(!isResendDisabled || timer === 0)
     setSubmitting(true);
     try {
       // Only send code and start timer if the timer isn't already running

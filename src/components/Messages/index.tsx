@@ -12,6 +12,7 @@ import emojiIcon from "../../assets/icons/mood-smile.svg";
 import file from "../../assets/icons/link.svg";
 import photo from "../../assets/icons/photo.svg";
 import share from "../../assets/icons/share.svg";
+import comingSoon from "../../assets/icons/coming-soon.svg";
 import search from "../../assets/icons/Search.svg";
 import CommonTextField from "../common/CommonTextField";
 import useDebounce from "../../hooks/useDebounce";
@@ -24,6 +25,7 @@ import { stringToColor } from "../../utils/common";
 import { EnMessageSender } from "../../utils/enums";
 import { IChatContacts } from "../../utils/Interfaces";
 import dayjs from "dayjs";
+import CommonDialog from "../common/CommonDialog";
 const sidebarStyles = {
   minWidth: 350,
   borderRight: "1px solid #E2E8F0",
@@ -72,19 +74,21 @@ const messageAreaStyles = {
 };
 
 const Messages = () => {
-  const { chatContacts, messages, loadingChatContacts, selectedUser } =
+  const { chatContacts, messages, loadingChatContacts, selectedUser, fetchChatContacts } =
     useAuth();
   const [userMessages, setUserMessages] = useState<any>([]);
 
   const [searchValue, setSearchValue] = useState<string>("");
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [openComingSoon, setOpenComingSoon] = useState(false);
   // const [messageHistory, setMessageHistory] = useState<{
   //   [contactId: string]: any[];
   // }>({});
   // const [patients, setPatients] = useState<any>({});
   // console.log(patients);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  console.log(selectedPatient, "selectedPatient");
+  const selectedFirstName = selectedPatient?.contactName?.split(" ")[0];
+  const selectedLastName = selectedPatient?.contactName?.split(" ")[1];
 
   // Add effect to set initial selected patient from messages
   useEffect(() => {
@@ -92,6 +96,13 @@ const Messages = () => {
       setSelectedPatient(messages[0]);
     }
   }, [messages, selectedPatient]);
+
+  //* Initially fetch chat contacts on this page we were using snapshot before
+  useEffect(() => {
+    if (selectedUser?.user_id) {
+      fetchChatContacts();
+    }
+  }, [selectedUser?.user_id]);
 
   // console.log(selectedPatient);
   //@ts-ignore
@@ -140,7 +151,7 @@ const Messages = () => {
     setSelectedPatient(patient);
     setUserMessages([]);
   }, []);
-
+//@ts-ignore
   const handleSendMessage = async (e: any) => {
     setLoadingSendMessage(true);
     e.preventDefault();
@@ -191,22 +202,22 @@ const Messages = () => {
           const userId = String(selectedUser.user_id);
 
           // Log what we're trying to fetch for debugging
-          console.log(
-            `Fetching messages for user ${userId} and contact ${selectedPatient.contactName}`
-          );
+          // console.log(
+          //   `Fetching messages for user ${userId} and contact ${selectedPatient.contactName}`
+          // );
 
           const messages = await getChatMessages(
             userId,
             selectedPatient.contactName
           );
-
-          console.log("Fetched messages:", messages);
-          setUserMessages([
-            {
-              ...messages[messages.length - 1],
+          // console.log("Fetched messages:", messages);
+          setUserMessages(
+            messages.map(message => ({
+              ...message,
               sender: EnMessageSender.MEDINI,
-            },
-          ]);
+            }))
+          );
+      
         } catch (error) {
           console.error("Error fetching chat messages:", error);
         } finally {
@@ -216,10 +227,12 @@ const Messages = () => {
 
       fetchChatMessages();
     } else {
-      console.log("Missing data for fetching messages:", {
-        userId: selectedUser?.user_id,
-        contactName: selectedPatient?.contactName,
-      });
+      console.log("Missing data for fetching messages:", 
+      //   {
+      //   userId: selectedUser?.user_id,
+      //   contactName: selectedPatient?.contactName,
+      // }
+    );
     }
   }, [selectedUser?.user_id, selectedPatient?.contactName]);
   // Helper function to format timestamp based on if it's today or not
@@ -303,8 +316,8 @@ const Messages = () => {
                     height: 40,
                   }}
                 >
-                  {contact.contactName.charAt(0)}
-                  {contact.contactName.charAt(0)}
+                  {contact.contactName.split(" ")[0].charAt(0).toUpperCase()}
+                  {contact.contactName.split(" ")[1].charAt(0).toUpperCase()}
                 </Avatar>
                 <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
                   <Box
@@ -426,8 +439,14 @@ const Messages = () => {
               alignItems: "center",
             }}
           >
-            <Avatar sx={{ bgcolor: "#f50057", mr: 2 }}>
-              {selectedPatient.contactName.charAt(0)}
+            <Avatar
+              sx={{
+                bgcolor: stringToColor(selectedPatient.contactName),
+                mr: 2,
+              }}
+            >
+              {selectedFirstName.charAt(0).toUpperCase()}
+              {selectedLastName.charAt(0).toUpperCase()}
             </Avatar>
             <Typography variant="subtitle1" fontWeight="bold">
               {selectedPatient.contactName}
@@ -450,116 +469,99 @@ const Messages = () => {
             ) : (
               userMessages &&
               (userMessages.length > 0 ? (
-                // [...selectedPatient.messages].reverse().map((msg: any) => (
-                <Box
-                  key={userMessages[0].id}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems:
-                      userMessages[0].sender !== EnMessageSender.MEDINI
-                        ? "flex-end"
-                        : "flex-start",
-                    mb: 2,
-                  }}
-                >
+                userMessages.map((msg: any) => (
                   <Box
+                    key={msg.id}
                     sx={{
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent:
-                        userMessages[0].sender !== EnMessageSender.MEDINI
+                      flexDirection: "column",
+                      alignItems:
+                        msg.sender !== EnMessageSender.MEDINI
                           ? "flex-end"
                           : "flex-start",
+                      mb: 2,
                     }}
                   >
-                    {/* {!msg.isUser && (
-                        <Avatar
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            mr: 1,
-                            bgcolor: stringToColor(
-                              selectedContact.first_name +
-                                selectedContact.last_name
-                            ),
-                          }}
-                        >
-                          {selectedContact.first_name.charAt(0)}
-                        </Avatar>
-                      )} */}
                     <Box
                       sx={{
-                        maxWidth: "100%",
-                        p: 1.5,
-                        borderRadius: "16px",
-                        borderBottomRightRadius:
-                          userMessages[0].sender !== EnMessageSender.MEDINI
-                            ? 0
-                            : "16px",
-                        borderBottomLeftRadius:
-                          userMessages[0].sender !== EnMessageSender.MEDINI
-                            ? "16px"
-                            : 0,
-                        bgcolor:
-                          userMessages[0].sender !== EnMessageSender.MEDINI
-                            ? "primary.main"
-                            : "grey.100",
-                        color:
-                          userMessages[0].sender !== EnMessageSender.MEDINI
-                            ? "white"
-                            : "inherit",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent:
+                          msg.sender !== EnMessageSender.MEDINI
+                            ? "flex-end"
+                            : "flex-start",
                       }}
                     >
-                      {userMessages[0].sender !== EnMessageSender.MEDINI ? (
+                      {msg.sender === EnMessageSender.MEDINI && (
+                        <Avatar
+                          sx={{
+                            bgcolor: stringToColor(selectedPatient.contactName),
+                            mr: 2,
+                          }}
+                        >
+                          M
+                        </Avatar>
+                      )}
+                      <Box
+                        sx={{
+                          maxWidth: "100%",
+                          p: 1.5,
+                          borderRadius: "16px",
+                          borderBottomRightRadius:
+                            msg.sender !== EnMessageSender.MEDINI
+                              ? 0
+                              : "16px",
+                          borderBottomLeftRadius:
+                            msg.sender !== EnMessageSender.MEDINI
+                              ? "16px"
+                              : 0,
+                          bgcolor:
+                            msg.sender !== EnMessageSender.MEDINI
+                              ? "primary.main"
+                              : "grey.100",
+                          color:
+                            msg.sender !== EnMessageSender.MEDINI
+                              ? "white"
+                              : "inherit",
+                        }}
+                      >
                         <Typography variant="body1">
-                          {/* Hey! I just booked this patient{" "}
-                            {selectedPatient.message} for an appointment on{" "}
-                            {selectedPatient.message} at{" "}
-                            {selectedPatient.message} o'clock with{" "} */}
-                          {userMessages[0].message}
+                          {msg.message}
                         </Typography>
-                      ) : (
-                        <>
-                          <Typography variant="body1">
-                            {userMessages[0].message}
-                          </Typography>
-                        </>
+                      </Box>
+                      {msg.sender !== EnMessageSender.MEDINI && (
+                        <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                          <img src={share} alt="share" />
+                        </IconButton>
                       )}
                     </Box>
-                    {userMessages[0].sender !== EnMessageSender.MEDINI && (
-                      <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
-                        <img src={share} alt="share" />
-                      </IconButton>
-                    )}
-                  </Box>
 
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      mt: 0.5,
-                      gap: 1,
-                      ml:
-                        userMessages[0].sender !== EnMessageSender.MEDINI
-                          ? 0
-                          : 0,
-                    }}
-                  >
-                    <Typography variant="bodySmallExtraBold" ml={1}>
-                      {userMessages[0].sender !== EnMessageSender.MEDINI
-                        ? "You"
-                        : userMessages[0].contactName}
-                    </Typography>
-                    <Typography variant="bodySmallMedium" color="grey.500">
-                      {dayjs(userMessages[0].timestamp).format(
-                        "YYYY-MM-DD HH:mm:ss"
-                      )}
-                    </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        mt: 0.5,
+                        gap: 1,
+                        ml:
+                          msg.sender !== EnMessageSender.MEDINI
+                            ? 0
+                            : 0,
+                      }}
+                    >
+                      <Typography variant="bodySmallExtraBold" ml={1}>
+                        {msg.sender === EnMessageSender.MEDINI
+                          ? "Medini"
+                          : msg.contactName}
+                      </Typography>
+                      <Typography variant="bodySmallMedium" color="grey.500">
+                        {dayjs(msg.timestamp).format(
+                          "YYYY-MM-DD HH:mm:ss"
+                        )}
+                      </Typography>
+                    </Box>
                   </Box>
-                </Box>
+                ))
               ) : (
-                // ))
                 <Box
                   sx={{
                     display: "flex",
@@ -583,9 +585,9 @@ const Messages = () => {
               value={newMessage}
               onChange={(e) => {
                 setNewMessage(e.target.value);
-                // console.log(e.target.value, "ll");
               }}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage(e)}
+              // onKeyPress={(e) => e.key === "Enter" && handleSendMessage(e)}
+              onKeyPress={(e) => e.key === "Enter" && setOpenComingSoon(true)}
             />
           </Box>
           <Box
@@ -614,9 +616,55 @@ const Messages = () => {
               // onClick={handleSend}
               disabled={!newMessage.trim() || loadingSendMessage}
               loading={loadingSendMessage}
-              onClick={handleSendMessage}
+              // onClick={handleSendMessage}
+              onClick={() => setOpenComingSoon(true)}
               sx={{ width: "150px" }}
             />
+            <CommonDialog
+              open={openComingSoon}
+              onClose={() => setOpenComingSoon(false)}
+              // title="Coming Soon"
+              cancelText=""
+              confirmText="Got it!"
+              maxWidth="sm"
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  py: 2,
+                  px: 1,
+                }}
+              >
+                <Box sx={{ mb: 3 }}>
+                  <img
+                    src={comingSoon}
+                    alt="coming soon"
+                    style={{ width: 100, height: 100 }}
+                  />
+                </Box>
+
+                <Typography
+                  variant="bodyXLargeExtraBold"
+                  gutterBottom
+                  align="center"
+                >
+                  Two-way conversation with your AI assistant is coming soon!
+                </Typography>
+
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  align="center"
+                  sx={{ mt: 1, mb: 2 }}
+                >
+                  We're working hard to enable interactive messaging with
+                  Medini. You'll be notified as soon as this feature is
+                  available.
+                </Typography>
+              </Box>
+            </CommonDialog>
           </Box>
         </Box>
       ) : (

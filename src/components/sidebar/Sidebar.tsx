@@ -94,7 +94,7 @@ const Sidebar = ({
   const [schedule, setSchedule] = useState<IAISchedule[]>(
     weekDays.map((day) => ({
       day_of_week: day,
-      is_ai_on_all_day: false,
+      is_ai_on_all_day: true,
       is_custom: false,
       start_time: "hh:mm",
       end_time: "hh:mm",
@@ -220,7 +220,7 @@ const Sidebar = ({
       setHelpModal(false);
       setSnackbar({
         open: true,
-        message: "Message sent successfully",
+        message: "A team member will get back to you by email in 2-3 business days",
         severity: "success",
       });
     } catch (error) {
@@ -474,7 +474,7 @@ const Sidebar = ({
             )}
             {renderListItem(
               undefined,
-              "Events",
+              "History",
               undefined,
               routes.sidebar.events.link
             )}
@@ -567,6 +567,18 @@ const Sidebar = ({
                           }
                           name={`radio-buttons-${daySchedule.day_of_week}`}
                         >
+                           <FormControlLabel
+                            value="allDay"
+                            control={<Radio size="small" />}
+                            label={
+                              <Typography
+                                variant="bodySmallMedium"
+                                color="textSecondary"
+                              >
+                                All Day
+                              </Typography>
+                            }
+                          />
                           <FormControlLabel
                             value="off"
                             control={<Radio size="small" />}
@@ -579,18 +591,7 @@ const Sidebar = ({
                               </Typography>
                             }
                           />
-                          <FormControlLabel
-                            value="allDay"
-                            control={<Radio size="small" />}
-                            label={
-                              <Typography
-                                variant="bodySmallMedium"
-                                color="textSecondary"
-                              >
-                                All Day
-                              </Typography>
-                            }
-                          />
+                         
                           <FormControlLabel
                             value="custom"
                             control={<Radio size="small" />}
