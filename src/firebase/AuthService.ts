@@ -51,6 +51,7 @@ import {
   EnSocialLogin,
   EnVerifiedStatus,
 } from "../utils/enums";
+import { createSecretary } from "../api/userApi";
 
 //* Function to get the Onboarding Status
 export const getOnboardingStatus = async (userId: string): Promise<number> => {
@@ -382,22 +383,58 @@ export const signInWithGoogle = async (
       // Extract first and last name
       const fullName = user.displayName?.split(" ") || ["", ""];
       const firstName = fullName[0] || "";
-      const lastName = fullName.slice(1).join(" ") || ""; // Handles multi-word last names
+      const lastName = fullName.slice(1).join(" ") || firstName; // Handles multi-word last names
 
-      userDetails = {
-        uid: user.uid,
-        uuid: newPropId, // Auto-incremented ID
-        firstName,
-        lastName,
-        email: user.email || "",
-        photoURL: user.photoURL || "",
-        createdAt: Timestamp.now().seconds, // Store as seconds
-        updatedAt: null,
-        deletedAt: null,
-        status: EnVerifiedStatus.VERIFIED,
-        onboardingStatus: EnOnboardingStatus.STATUS_0,
-        loginType: EnSocialLogin.GOOGLE,
-      };
+      // Create secretary in API
+      try {
+        // Import at the top of the file
+        
+        const payload = {
+          first_name: firstName,
+          last_name: lastName,
+          email: user.email,
+          password: "medini-ai",
+        };
+        //@ts-ignore
+        const response = await createSecretary(payload);
+
+        // Get the secretary ID from the response
+        const secretaryId = response.secretary.secretary_id;
+
+        userDetails = {
+          uid: user.uid,
+          uuid: newPropId, // Auto-incremented ID
+          firstName,
+          lastName,
+          email: user.email || "",
+          photoURL: user.photoURL || "",
+          createdAt: Timestamp.now().seconds, // Store as seconds
+          updatedAt: null,
+          deletedAt: null,
+          status: EnVerifiedStatus.VERIFIED,
+          onboardingStatus: EnOnboardingStatus.STATUS_0,
+          loginType: EnSocialLogin.GOOGLE,
+          secretaryID: secretaryId, // Add secretary ID to user details
+        };
+      } catch (apiError) {
+        console.error("Failed to create secretary record:", apiError);
+
+        // Proceed with user creation without secretary ID if API call fails
+        userDetails = {
+          uid: user.uid,
+          uuid: newPropId,
+          firstName,
+          lastName,
+          email: user.email || "",
+          photoURL: user.photoURL || "",
+          createdAt: Timestamp.now().seconds,
+          updatedAt: null,
+          deletedAt: null,
+          status: EnVerifiedStatus.VERIFIED,
+          onboardingStatus: EnOnboardingStatus.STATUS_0,
+          loginType: EnSocialLogin.GOOGLE,
+        };
+      }
 
       await setDoc(userRef, userDetails);
     } else {
@@ -796,13 +833,13 @@ export const getChatContacts = async (userId: string): Promise<any[]> => {
 
     // Get all documents in the contactList subcollection
     const contactsSnapshot = await getDocs(contactsCollectionRef);
-    
+
     // Map the documents to an array of contact objects
-    const contacts = contactsSnapshot.docs.map(doc => ({
+    const contacts = contactsSnapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
-    
+
     return contacts;
   } catch (error) {
     console.error("Error fetching chat contacts:", error);
@@ -810,7 +847,10 @@ export const getChatContacts = async (userId: string): Promise<any[]> => {
   }
 };
 
-export const getChatMessages = async (userId: string, collectionName: string): Promise<any[]> => {
+export const getChatMessages = async (
+  userId: string,
+  collectionName: string
+): Promise<any[]> => {
   try {
     const messagesCollectionRef = collection(
       firebaseFirestore,
@@ -820,18 +860,21 @@ export const getChatMessages = async (userId: string, collectionName: string): P
     );
 
     // Create a query ordered by timestamp
-    const messagesQuery = query(messagesCollectionRef, orderBy("timestamp", "asc"));
-    
+    const messagesQuery = query(
+      messagesCollectionRef,
+      orderBy("timestamp", "asc")
+    );
+
     // Get the documents
     const messagesSnapshot = await getDocs(messagesQuery);
-    
+
     // Map the documents to an array of message objects
-    const messages = messagesSnapshot.docs.map(doc => ({
+    const messages = messagesSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-      timestamp: doc.data().timestamp?.toDate() // Convert Firestore timestamp to JS Date
+      timestamp: doc.data().timestamp?.toDate(), // Convert Firestore timestamp to JS Date
     }));
-    
+
     return messages;
   } catch (error) {
     console.error("Error fetching chat messages:", error);

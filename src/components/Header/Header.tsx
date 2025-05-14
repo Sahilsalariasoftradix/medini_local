@@ -13,7 +13,7 @@ import {
 import { drawerWidth } from "../sidebar/Sidebar";
 import Grid from "@mui/material/Grid2";
 import { IHeaderProps, IUser, IUserDetails } from "../../utils/Interfaces";
-// import bell from "../../assets/icons/notifications.svg";
+
 import { useState, useEffect } from "react";
 import down from "../../assets/icons/arrow-down.svg";
 // import profile1 from "../../assets/images/profile-1.svg";
@@ -432,6 +432,9 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
       >
         <Grid container spacing={2}>
           <Grid size={6}>
+            <Typography variant="bodyMediumSemiBold" color="grey.600">
+              First Name
+            </Typography>
             <CommonTextField
               sx={{ mt: 1 }}
               placeholder="First name"
@@ -440,6 +443,9 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
             />
           </Grid>
           <Grid size={6}>
+          <Typography variant="bodyMediumSemiBold" color="grey.600">
+              Last Name
+            </Typography>
             <CommonTextField
               sx={{ mt: 1 }}
               placeholder="Last name"
@@ -448,13 +454,18 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
             />
           </Grid>
         </Grid>
-
+        <Typography mt={1} variant="bodyMediumSemiBold" color="grey.600">
+          Email
+        </Typography>
         <CommonTextField
           sx={{ mt: 1 }}
           placeholder="Email"
           register={register("email")}
           errorMessage={errors.email?.message}
         />
+         <Typography mt={1} variant="bodyMediumSemiBold" color="grey.600">
+          Phone
+        </Typography>
         <Box mt={1}>
           <MuiPhone
             error={formSubmitted && (!phone || phone.length < 12)}

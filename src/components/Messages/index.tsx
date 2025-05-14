@@ -17,18 +17,22 @@ import search from "../../assets/icons/Search.svg";
 import CommonTextField from "../common/CommonTextField";
 import useDebounce from "../../hooks/useDebounce";
 import { useAuth } from "../../store/AuthContext";
+import pin from "../../assets/icons/Pin.svg";
 import {
   getChatMessages,
   // sendMessageToPatient,
 } from "../../firebase/AuthService";
 import { stringToColor } from "../../utils/common";
-import { EnMessageRole, EnMessageSender, EnMessageType } from "../../utils/enums";
+import {
+  EnMessageRole,
+  EnMessageSender,
+  EnMessageType,
+} from "../../utils/enums";
 import { IChatContacts, IMessage } from "../../utils/Interfaces";
 import dayjs from "dayjs";
 import CommonDialog from "../common/CommonDialog";
 import { messageAreaStyles, sidebarStyles } from "../../utils/commonStyles";
 import { formatMessageTime } from "../../utils/helper";
-
 
 const Messages = () => {
   const {
@@ -169,7 +173,6 @@ const Messages = () => {
   //   }
   // };
 
-
   //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
 
@@ -190,7 +193,7 @@ const Messages = () => {
     }
   }, [selectedPatient?.messages, aiMessages]);
 
-// Fetch messages for the selected patient from Firebase
+  // Fetch messages for the selected patient from Firebase
   useEffect(() => {
     setLoadingMessages(true);
     // Check both selectedUser and selectedPatient exist and have the required properties
@@ -235,13 +238,12 @@ const Messages = () => {
     }
   }, [selectedUser?.user_id, selectedPatient?.contactName]);
 
-
   //* WebSocket setup for chatting with the AI
   useEffect(() => {
     // Only connect if we have a selected user
     // if (!selectedUser?.user_id) return;
 
-    if(socketConnected){
+    if (socketConnected) {
       return;
     }
 
@@ -264,8 +266,7 @@ const Messages = () => {
     newSocket.addEventListener("open", (event) => {
       // console.log("WebSocket connection established");
       // setSocketConnected(true);
-
-      // Send the AI conversation payload 
+      // Send the AI conversation payload
       // const aiConvoPayload = {
       //   type: "ai_convo",
       //   payload: {
@@ -277,7 +278,6 @@ const Messages = () => {
       //     ],
       //   },
       // };
-
       // console.log("Sending initial AI conversation payload:", aiConvoPayload);
       // newSocket.send(JSON.stringify(aiConvoPayload));
     });
@@ -297,10 +297,10 @@ const Messages = () => {
             sender: msg.role,
             timestamp: new Date(),
           }));
-          
+
           setAiMessages(messages);
         }
-        
+
         // If this is a chat message and it's for the current selected patient will handle it here later
         // if (
         //   data.type === EnMessageType.MESSAGE &&
@@ -347,7 +347,7 @@ const Messages = () => {
     if (!newMessage.trim()) return;
 
     setLoadingSendMessage(true);
-    
+
     // Add user message to AI chat
     const userMessage = {
       id: `user-${Date.now()}`,
@@ -355,26 +355,26 @@ const Messages = () => {
       sender: EnMessageRole.USER,
       timestamp: new Date(),
     };
-    
+
     setAiMessages((prev: IMessage[]) => [...prev, userMessage]);
-    
+
     // Send message to WebSocket
     if (socket && socketConnected) {
       // Format messages for AI conversation
-      const messages = [...aiMessages, userMessage].map(msg => ({
+      const messages = [...aiMessages, userMessage].map((msg) => ({
         role: msg.sender,
-        content: msg.message
+        content: msg.message,
       }));
       socket.send(
         JSON.stringify({
           type: EnMessageType.AI_CONVO,
           payload: {
-            messages
-          }
+            messages,
+          },
         })
       );
     }
-    
+
     setNewMessage("");
     setLoadingSendMessage(false);
   };
@@ -437,6 +437,18 @@ const Messages = () => {
               >
                 Medini AI
               </Typography>
+              <Box
+                component="img"
+                sx={{
+                  position: "relative",
+                  top: 0,
+                  right: 0,
+                  height: 20,
+                  width: 20,
+                }}
+                alt="Pin."
+                src={pin}
+              />
             </Box>
           </Box>
         </Box>
@@ -613,7 +625,9 @@ const Messages = () => {
                   display: "flex",
                   flexDirection: "column",
                   alignItems:
-                    msg.sender === EnMessageRole.USER ? "flex-end" : "flex-start",
+                    msg.sender === EnMessageRole.USER
+                      ? "flex-end"
+                      : "flex-start",
                   mb: 2,
                 }}
               >
@@ -622,7 +636,9 @@ const Messages = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent:
-                      msg.sender === EnMessageRole.USER ? "flex-end" : "flex-start",
+                      msg.sender === EnMessageRole.USER
+                        ? "flex-end"
+                        : "flex-start",
                   }}
                 >
                   {msg.sender === EnMessageRole.ASSISTANT && (
@@ -640,11 +656,16 @@ const Messages = () => {
                       maxWidth: "100%",
                       p: 1.5,
                       borderRadius: "16px",
-                      borderBottomRightRadius: msg.sender === EnMessageRole.USER ? 0 : "16px",
-                      borderBottomLeftRadius: msg.sender === EnMessageRole.USER ? "16px" : 0,
+                      borderBottomRightRadius:
+                        msg.sender === EnMessageRole.USER ? 0 : "16px",
+                      borderBottomLeftRadius:
+                        msg.sender === EnMessageRole.USER ? "16px" : 0,
                       bgcolor:
-                        msg.sender === EnMessageRole.USER ? "primary.main" : "grey.100",
-                      color: msg.sender === EnMessageRole.USER ? "white" : "inherit",
+                        msg.sender === EnMessageRole.USER
+                          ? "primary.main"
+                          : "grey.100",
+                      color:
+                        msg.sender === EnMessageRole.USER ? "white" : "inherit",
                     }}
                   >
                     <Typography variant="body1">{msg.message}</Typography>
@@ -669,7 +690,7 @@ const Messages = () => {
                     {msg.sender === EnMessageRole.USER ? "You" : "Medini AI"}
                   </Typography>
                   <Typography variant="bodySmallMedium" color="grey.500">
-                    {dayjs(msg.timestamp).format("YYYY-MM-DD HH:mm:ss")}
+                    {dayjs(msg.timestamp).format("hh:mm A")}
                   </Typography>
                 </Box>
               </Box>

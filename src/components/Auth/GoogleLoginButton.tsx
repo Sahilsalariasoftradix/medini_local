@@ -13,6 +13,7 @@ const GoogleSignInButton = () => {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle(setUserDetails, setLoading);
+      console.log("User details:", setUserDetails);
       setTimeout(() => {
         navigate(routes.sidebar.bookings.link);
       }, 500);
