@@ -1,6 +1,6 @@
 import dayjs, { Dayjs } from "dayjs";
 import { Dispatch, SetStateAction } from "react";
-import { EnBookingType, EnShowPurposeUI } from "./enums";
+import { EnBookingType, EnMessageRole, EnShowPurposeUI } from "./enums";
 
 export interface LoginRequest {
   email: string;
@@ -455,4 +455,12 @@ export interface IEventLogs{
   event_type_id:number;
   event_type_name:string;
   event_type_icon:string;
+}
+
+export interface IMessage {
+  id: string;
+  // sender: EnMessageRole;
+  content: string;
+  timestamp: string;
+  role: EnMessageRole;
 }

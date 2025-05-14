@@ -19,73 +19,34 @@ import useDebounce from "../../hooks/useDebounce";
 import { useAuth } from "../../store/AuthContext";
 import {
   getChatMessages,
-  sendMessageToPatient,
+  // sendMessageToPatient,
 } from "../../firebase/AuthService";
 import { stringToColor } from "../../utils/common";
-import { EnMessageSender } from "../../utils/enums";
-import { IChatContacts } from "../../utils/Interfaces";
+import { EnMessageRole, EnMessageSender, EnMessageType } from "../../utils/enums";
+import { IChatContacts, IMessage } from "../../utils/Interfaces";
 import dayjs from "dayjs";
 import CommonDialog from "../common/CommonDialog";
-const sidebarStyles = {
-  minWidth: 350,
-  borderRight: "1px solid #E2E8F0",
-  overflow: "auto",
-  display: { xs: "none", sm: "block" },
-  scrollbarWidth: "thin",
-  scrollbarColor: "transparent transparent",
-  "&::-webkit-scrollbar": {
-    width: 8,
-    background: "transparent",
-  },
-  "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "transparent",
-    borderRadius: 4,
-    transition: "background-color 0.2s",
-  },
-  "&:hover::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
-  },
-  "&:hover": {
-    scrollbarColor: "rgba(0,0,0,0.2) transparent",
-  },
-};
-const messageAreaStyles = {
-  flexGrow: 1,
-  py: 2,
-  px: 4,
-  overflowY: "auto",
-  "&::-webkit-scrollbar": {
-    width: "8px",
-    background: "transparent",
-  },
-  "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "transparent",
-    borderRadius: "4px",
-    transition: "background-color 0.2s",
-  },
-  scrollbarWidth: "thin",
-  scrollbarColor: "transparent transparent",
-  "&:hover": {
-    "&::-webkit-scrollbar-thumb": {
-      backgroundColor: "rgba(0,0,0,0.2)",
-    },
-    scrollbarColor: "rgba(0,0,0,0.2) transparent",
-  },
-};
+import { messageAreaStyles, sidebarStyles } from "../../utils/commonStyles";
+import { formatMessageTime } from "../../utils/helper";
+
 
 const Messages = () => {
-  const { chatContacts, messages, loadingChatContacts, selectedUser, fetchChatContacts } =
-    useAuth();
+  const {
+    chatContacts,
+    messages,
+    loadingChatContacts,
+    selectedUser,
+    fetchChatContacts,
+  } = useAuth();
   const [userMessages, setUserMessages] = useState<any>([]);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [aiMessages, setAiMessages] = useState<any>([]);
+  const [isAiSelected, setIsAiSelected] = useState(false);
 
   const [searchValue, setSearchValue] = useState<string>("");
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [openComingSoon, setOpenComingSoon] = useState(false);
-  // const [messageHistory, setMessageHistory] = useState<{
-  //   [contactId: string]: any[];
-  // }>({});
-  // const [patients, setPatients] = useState<any>({});
-  // console.log(patients);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const selectedFirstName = selectedPatient?.contactName?.split(" ")[0];
   const selectedLastName = selectedPatient?.contactName?.split(" ")[1];
@@ -150,27 +111,64 @@ const Messages = () => {
   const handlePatientSelect = useCallback((patient: IChatContacts) => {
     setSelectedPatient(patient);
     setUserMessages([]);
+    setIsAiSelected(false);
   }, []);
-//@ts-ignore
-  const handleSendMessage = async (e: any) => {
-    setLoadingSendMessage(true);
-    e.preventDefault();
-    if (!selectedPatient || !newMessage.trim()) return;
 
-    try {
-      await sendMessageToPatient(
-        selectedPatient.details?.name,
-        newMessage.trim()
-      );
-      setNewMessage("");
-    } catch (err) {
-      console.error("❌ Error sending message:", err);
-      setError("Failed to send message");
-    } finally {
-      setLoadingSendMessage(false);
-    }
-  };
-  // const patientIds = Object.keys(patients);
+  // Add handler for Medini AI selection
+  const handleAiSelect = useCallback(() => {
+    setSelectedPatient(null);
+    setIsAiSelected(true);
+    // Initialize AI chat with default messages if empty
+    // if (aiMessages.length === 0) {
+    //   setAiMessages([
+    //     {
+    //       id: "initial-user",
+    //       message: "hello",
+    //       sender: "user",
+    //       timestamp: new Date(),
+    //     },
+    //     {
+    //       id: "initial-assistant",
+    //       message: "Hello! How can I assist you today?",
+    //       sender: "assistant",
+    //       timestamp: new Date(),
+    //     },
+    //   ]);
+    // }
+  }, [aiMessages.length]);
+
+  //Commented out for now as we are using websocket for sending messages
+  // const handleSendMessage = async (e: any) => {
+  //   setLoadingSendMessage(true);
+  //   e.preventDefault();
+  //   if (!selectedPatient || !newMessage.trim()) return;
+
+  //   try {
+  //     await sendMessageToPatient(
+  //       selectedPatient.details?.name,
+  //       newMessage.trim()
+  //     );
+
+  //     if (socket && socketConnected) {
+  //       socket.send(
+  //         JSON.stringify({
+  //           type: "message",
+  //           contactName: selectedPatient.contactName,
+  //           message: newMessage.trim(),
+  //           userId: selectedUser?.user_id,
+  //         })
+  //       );
+  //     }
+
+  //     setNewMessage("");
+  //   } catch (err) {
+  //     console.error("❌ Error sending message:", err);
+  //     setError("Failed to send message");
+  //   } finally {
+  //     setLoadingSendMessage(false);
+  //   }
+  // };
+
 
   //@ts-ignore
   const debouncedSearchValue = useDebounce(searchValue, 300);
@@ -185,13 +183,14 @@ const Messages = () => {
         )
       : [];
 
-  // Scroll to bottom of messages when messages change
+  //* Scroll to bottom of messages when messages change
   useEffect(() => {
     if (messageAreaRef.current) {
       messageAreaRef.current.scrollTop = messageAreaRef.current.scrollHeight;
     }
-  }, [selectedPatient?.messages]);
+  }, [selectedPatient?.messages, aiMessages]);
 
+// Fetch messages for the selected patient from Firebase
   useEffect(() => {
     setLoadingMessages(true);
     // Check both selectedUser and selectedPatient exist and have the required properties
@@ -212,12 +211,11 @@ const Messages = () => {
           );
           // console.log("Fetched messages:", messages);
           setUserMessages(
-            messages.map(message => ({
+            messages.map((message) => ({
               ...message,
               sender: EnMessageSender.MEDINI,
             }))
           );
-      
         } catch (error) {
           console.error("Error fetching chat messages:", error);
         } finally {
@@ -227,45 +225,158 @@ const Messages = () => {
 
       fetchChatMessages();
     } else {
-      console.log("Missing data for fetching messages:", 
-      //   {
-      //   userId: selectedUser?.user_id,
-      //   contactName: selectedPatient?.contactName,
-      // }
-    );
+      console.log(
+        "Missing data for fetching messages:"
+        //   {
+        //   userId: selectedUser?.user_id,
+        //   contactName: selectedPatient?.contactName,
+        // }
+      );
     }
   }, [selectedUser?.user_id, selectedPatient?.contactName]);
-  // Helper function to format timestamp based on if it's today or not
-  const formatMessageTime = (timestamp: any) => {
-    const messageDate = new Date(
-      timestamp.seconds * 1000 + timestamp.nanoseconds / 1e6
-    );
-    const today = new Date();
 
-    // Check if the message is from today
-    const isToday =
-      messageDate.getDate() === today.getDate() &&
-      messageDate.getMonth() === today.getMonth() &&
-      messageDate.getFullYear() === today.getFullYear();
 
-    if (isToday) {
-      // Show only time for today's messages
-      return messageDate.toLocaleString(undefined, {
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
-    } else {
-      // Show date and time for older messages
-      return messageDate.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
+  //* WebSocket setup for chatting with the AI
+  useEffect(() => {
+    // Only connect if we have a selected user
+    // if (!selectedUser?.user_id) return;
+
+    if(socketConnected){
+      return;
     }
+
+    const wsUrl = import.meta.env.VITE_MEDINI_WEBSOCKET_URL;
+    if (!wsUrl) {
+      console.error("WebSocket URL not defined in environment variables");
+      return;
+    }
+
+    // Create WebSocket connection
+    const newSocket = new WebSocket(wsUrl);
+
+    newSocket.onopen = () => {
+      console.log("WebSocket connection established");
+      setSocketConnected(true);
+    };
+
+    // Connection opened
+    //@ts-ignore
+    newSocket.addEventListener("open", (event) => {
+      // console.log("WebSocket connection established");
+      // setSocketConnected(true);
+
+      // Send the AI conversation payload 
+      // const aiConvoPayload = {
+      //   type: "ai_convo",
+      //   payload: {
+      //     messages: [
+      //       {
+      //         role: "user",
+      //         content: "hello",
+      //       },
+      //     ],
+      //   },
+      // };
+
+      // console.log("Sending initial AI conversation payload:", aiConvoPayload);
+      // newSocket.send(JSON.stringify(aiConvoPayload));
+    });
+
+    // Listen for messages
+    newSocket.addEventListener("message", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        // console.log("Message from server:", data);
+
+        // Handle AI conversation responses
+        if (data.type === EnMessageType.AI_CONVO && data.payload) {
+          // Process the AI conversation messages
+          const messages = data.payload.map((msg: IMessage, index: number) => ({
+            id: `ai-msg-${index}-${Date.now()}`,
+            message: msg.content,
+            sender: msg.role,
+            timestamp: new Date(),
+          }));
+          
+          setAiMessages(messages);
+        }
+        
+        // If this is a chat message and it's for the current selected patient will handle it here later
+        // if (
+        //   data.type === EnMessageType.MESSAGE &&
+        //   selectedPatient?.contactName === data.contactName
+        // ) {
+        //   // Existing message handling...
+        // }
+
+        // If this is a notification about a new chat, refresh contacts
+        // if (data.type === "new_chat") {
+        //   fetchChatContacts();
+        // }
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error);
+      }
+    });
+
+    //@ts-ignore
+    newSocket.addEventListener("close", (event) => {
+      console.log("WebSocket connection closed");
+      setSocketConnected(false);
+    });
+
+    // Error handling
+    newSocket.addEventListener("error", (error) => {
+      console.error("WebSocket error:", error);
+      setSocketConnected(false);
+    });
+
+    // Update socket reference
+    setSocket(newSocket);
+
+    // Clean up on unmount
+    // return () => {
+    //   if (newSocket && newSocket.readyState === WebSocket.OPEN) {
+    //     newSocket.close();
+    //   }
+    // };
+  }, [socketConnected]);
+
+  //* Handle sending messages to AI
+  const handleSendAiMessage = (e: any) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+
+    setLoadingSendMessage(true);
+    
+    // Add user message to AI chat
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      message: newMessage.trim(),
+      sender: EnMessageRole.USER,
+      timestamp: new Date(),
+    };
+    
+    setAiMessages((prev: IMessage[]) => [...prev, userMessage]);
+    
+    // Send message to WebSocket
+    if (socket && socketConnected) {
+      // Format messages for AI conversation
+      const messages = [...aiMessages, userMessage].map(msg => ({
+        role: msg.sender,
+        content: msg.message
+      }));
+      socket.send(
+        JSON.stringify({
+          type: EnMessageType.AI_CONVO,
+          payload: {
+            messages
+          }
+        })
+      );
+    }
+    
+    setNewMessage("");
+    setLoadingSendMessage(false);
   };
 
   return (
@@ -288,6 +399,47 @@ const Messages = () => {
         </Box>
 
         {/* Contact list items */}
+        {/* Fixed AI chatBot */}
+        <Box
+          sx={{
+            display: "flex",
+            p: 2,
+            borderBottom: "1px solid #f5f5f5",
+            cursor: "pointer",
+            "&:hover": {
+              bgcolor: "rgba(0, 0, 0, 0.04)",
+            },
+            ...(isAiSelected ? { bgcolor: "rgba(0, 0, 0, 0.04)" } : {}),
+          }}
+          onClick={handleAiSelect}
+        >
+          <Avatar
+            sx={{
+              bgcolor: "primary.main",
+              width: 40,
+              height: 40,
+            }}
+          >
+            M
+          </Avatar>
+          <Box sx={{ ml: 1.5, overflow: "hidden", flexGrow: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography
+                sx={{ maxWidth: "170px" }}
+                variant="bodyLargeExtraBold"
+                noWrap
+              >
+                Medini AI
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
         <Box>
           {chatContacts &&
             chatContacts.length > 0 &&
@@ -427,7 +579,145 @@ const Messages = () => {
       </Box>
 
       {/* Right side - chat area */}
-      {selectedPatient ? (
+      {isAiSelected ? (
+        <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+          {/* AI Chat header */}
+          <Box
+            sx={{
+              px: 4,
+              py: 3,
+              borderBottom: "1px solid #E2E8F0",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <Avatar
+              sx={{
+                bgcolor: "primary.main",
+                mr: 2,
+              }}
+            >
+              M
+            </Avatar>
+            <Typography variant="subtitle1" fontWeight="bold">
+              Medini AI
+            </Typography>
+          </Box>
+
+          {/* AI Messages area */}
+          <Box sx={messageAreaStyles} ref={messageAreaRef}>
+            {aiMessages.map((msg: any) => (
+              <Box
+                key={msg.id}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems:
+                    msg.sender === EnMessageRole.USER ? "flex-end" : "flex-start",
+                  mb: 2,
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent:
+                      msg.sender === EnMessageRole.USER ? "flex-end" : "flex-start",
+                  }}
+                >
+                  {msg.sender === EnMessageRole.ASSISTANT && (
+                    <Avatar
+                      sx={{
+                        bgcolor: "primary.main",
+                        mr: 2,
+                      }}
+                    >
+                      M
+                    </Avatar>
+                  )}
+                  <Box
+                    sx={{
+                      maxWidth: "100%",
+                      p: 1.5,
+                      borderRadius: "16px",
+                      borderBottomRightRadius: msg.sender === EnMessageRole.USER ? 0 : "16px",
+                      borderBottomLeftRadius: msg.sender === EnMessageRole.USER ? "16px" : 0,
+                      bgcolor:
+                        msg.sender === EnMessageRole.USER ? "primary.main" : "grey.100",
+                      color: msg.sender === EnMessageRole.USER ? "white" : "inherit",
+                    }}
+                  >
+                    <Typography variant="body1">{msg.message}</Typography>
+                  </Box>
+                  {msg.sender === EnMessageRole.USER && (
+                    <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
+                      <img src={share} alt="share" />
+                    </IconButton>
+                  )}
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    mt: 0.5,
+                    gap: 1,
+                    ml: msg.sender === EnMessageRole.USER ? 0 : 0,
+                  }}
+                >
+                  <Typography variant="bodySmallExtraBold" ml={1}>
+                    {msg.sender === EnMessageRole.USER ? "You" : "Medini AI"}
+                  </Typography>
+                  <Typography variant="bodySmallMedium" color="grey.500">
+                    {dayjs(msg.timestamp).format("YYYY-MM-DD HH:mm:ss")}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+
+          {/* Message input for AI chat */}
+          <Box sx={{ px: 6 }}>
+            <CommonTextField
+              placeholder="Ask Medini AI something..."
+              value={newMessage}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+              }}
+              onKeyPress={(e) => e.key === "Enter" && handleSendAiMessage(e)}
+            />
+          </Box>
+          <Box
+            sx={{
+              py: 2,
+              px: 5,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Box>
+              <IconButton>
+                <img src={photo} alt="photo" />
+              </IconButton>
+              <IconButton>
+                <img src={file} alt="file" />
+              </IconButton>
+              <IconButton>
+                <img src={emojiIcon} alt="emoji" />
+              </IconButton>
+            </Box>
+
+            <CommonButton
+              text="Send"
+              disabled={!newMessage.trim() || loadingSendMessage}
+              loading={loadingSendMessage}
+              onClick={handleSendAiMessage}
+              sx={{ width: "150px" }}
+            />
+          </Box>
+        </Box>
+      ) : selectedPatient ? (
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           {/* Chat header */}
           <Box
@@ -508,13 +798,9 @@ const Messages = () => {
                           p: 1.5,
                           borderRadius: "16px",
                           borderBottomRightRadius:
-                            msg.sender !== EnMessageSender.MEDINI
-                              ? 0
-                              : "16px",
+                            msg.sender !== EnMessageSender.MEDINI ? 0 : "16px",
                           borderBottomLeftRadius:
-                            msg.sender !== EnMessageSender.MEDINI
-                              ? "16px"
-                              : 0,
+                            msg.sender !== EnMessageSender.MEDINI ? "16px" : 0,
                           bgcolor:
                             msg.sender !== EnMessageSender.MEDINI
                               ? "primary.main"
@@ -525,9 +811,7 @@ const Messages = () => {
                               : "inherit",
                         }}
                       >
-                        <Typography variant="body1">
-                          {msg.message}
-                        </Typography>
+                        <Typography variant="body1">{msg.message}</Typography>
                       </Box>
                       {msg.sender !== EnMessageSender.MEDINI && (
                         <IconButton size="small" sx={{ ml: 1, opacity: 0.6 }}>
@@ -542,10 +826,7 @@ const Messages = () => {
                         alignItems: "center",
                         mt: 0.5,
                         gap: 1,
-                        ml:
-                          msg.sender !== EnMessageSender.MEDINI
-                            ? 0
-                            : 0,
+                        ml: msg.sender !== EnMessageSender.MEDINI ? 0 : 0,
                       }}
                     >
                       <Typography variant="bodySmallExtraBold" ml={1}>
@@ -554,9 +835,7 @@ const Messages = () => {
                           : msg.contactName}
                       </Typography>
                       <Typography variant="bodySmallMedium" color="grey.500">
-                        {dayjs(msg.timestamp).format(
-                          "YYYY-MM-DD HH:mm:ss"
-                        )}
+                        {dayjs(msg.timestamp).format("YYYY-MM-DD HH:mm:ss")}
                       </Typography>
                     </Box>
                   </Box>
@@ -678,7 +957,7 @@ const Messages = () => {
           }}
         >
           <Typography variant="bodyLargeExtraBold">
-            You will get a message here when your AI books a call by phone
+            Select a conversation or start chatting with Medini AI
           </Typography>
         </Box>
       )}

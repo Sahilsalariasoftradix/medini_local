@@ -171,8 +171,9 @@ const Events = () => {
     }
 
     // Otherwise, prepend the API base URL
-    return `${apiBaseUrl.split("api/v1")[0]}${eventType.icons.startsWith("/") ? "" : "/"
-      }${eventType.icons.substring(1)}`;
+    return `${apiBaseUrl.split("api/v1")[0]}${
+      eventType.icons.startsWith("/") ? "" : "/"
+    }${eventType.icons.substring(1)}`;
   };
 
   return (
@@ -387,8 +388,8 @@ const Events = () => {
                     },
                   },
                 }}
-              // showFirstButton
-              // showLastButton
+                // showFirstButton
+                // showLastButton
               />
             </Stack>
           </Box>

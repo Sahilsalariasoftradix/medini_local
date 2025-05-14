@@ -161,3 +161,11 @@ export enum EnAIStatus {
   DISABLED = 0,
   // PAUSED = 2,
 }
+export enum EnMessageType {
+  AI_CONVO = "ai_convo",
+  MESSAGE = "message",
+}
+export enum EnMessageRole {
+  USER = "user",
+  ASSISTANT = "assistant",
+}
