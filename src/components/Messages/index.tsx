@@ -178,14 +178,13 @@ const Messages = () => {
 
   // Filter messages based on search term
   const filteredMessages =
-    messages && messages.length > 0
-      ? messages.filter((contact: any) =>
+  chatContacts && chatContacts.length > 0
+      ? chatContacts.filter((contact: any) =>
           contact.contactName
             .toLowerCase()
             .includes(debouncedSearchValue.toLowerCase())
         )
       : [];
-
   //* Scroll to bottom of messages when messages change
   useEffect(() => {
     if (messageAreaRef.current) {
@@ -453,9 +452,9 @@ const Messages = () => {
           </Box>
         </Box>
         <Box>
-          {chatContacts &&
-            chatContacts.length > 0 &&
-            chatContacts.map((contact: IChatContacts, index: number) => (
+          {filteredMessages &&
+            filteredMessages.length > 0 &&
+            filteredMessages.map((contact: IChatContacts, index: number) => (
               <Box
                 key={index}
                 sx={{
@@ -543,7 +542,7 @@ const Messages = () => {
                 </Box>
               </Box>
             ))}
-          {messages && messages.length > 0 && filteredMessages.length === 0 && (
+          {!loadingChatContacts &&  filteredMessages && filteredMessages.length === 0 && (
             <Box
               sx={{
                 display: "flex",
@@ -559,7 +558,7 @@ const Messages = () => {
               </Box>
             </Box>
           )}
-          {!loadingChatContacts &&
+          {/* {!loadingChatContacts &&
             chatContacts &&
             chatContacts.length === 0 && (
               <Box
@@ -574,7 +573,7 @@ const Messages = () => {
                   No messages yet
                 </Typography>
               </Box>
-            )}
+            )} */}
           {loadingChatContacts && chatContacts.length === 0 && (
             <Box
               sx={{

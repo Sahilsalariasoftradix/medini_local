@@ -375,6 +375,9 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
         disabled={isLoading}
         loading={isLoading}
       >
+        <Typography variant="bodyMediumSemiBold" color="grey.600">
+              First Name
+            </Typography>
         <CommonTextField
           value={selectedUser?.first_name || ""}
           onChange={(e: any) =>
@@ -385,6 +388,9 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
             )
           }
         />
+           <Typography variant="bodyMediumSemiBold" color="grey.600">
+              Last Name
+            </Typography>
         <CommonTextField
           sx={{ mt: 1 }}
           value={selectedUser?.last_name || ""}
@@ -396,6 +402,9 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
             )
           }
         />
+        <Typography variant="bodyMediumSemiBold" color="grey.600">
+              Email
+            </Typography>
         <CommonTextField
           sx={{ mt: 1 }}
           value={selectedUser?.email || ""}
@@ -405,6 +414,9 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
             )
           }
         />
+        <Typography variant="bodyMediumSemiBold" color="grey.600">
+              Phone
+            </Typography>
         <Box mt={1}>
           <MuiPhone
             value={selectedUser?.phone || ""}
