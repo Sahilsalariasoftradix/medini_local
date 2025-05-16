@@ -50,8 +50,8 @@ import {
 import { getContactsByUserId } from "../../firebase/AuthService";
 import { Controller, useForm } from "react-hook-form";
 import SearchInput from "../../components/common/SearchInput";
-import { sleep } from "../../components/Booking/availability-calendar";
-import { topFilms } from "../../utils/staticText";
+// import { sleep } from "../../components/Booking/availability-calendar";
+// import { topFilms } from "../../utils/staticText";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import addIcon from "../../assets/icons/add-icn.svg";
@@ -405,9 +405,7 @@ const addCallSchema = z.object({
   callPurpose: z
     .string({ message: "Call Purpose is required" })
     .min(1, { message: "Call Purpose is required" }),
-  appointmentReason: z
-    .string({ message: "Reason is required" })
-    .min(1, { message: "Reason is required" }),
+  appointmentReason: z.string({ message: "Reason is required" }).optional(),
   inPersonOnly: z.boolean().optional(),
   bookingStartDate: z.string().optional(),
   bookingEndDate: z.string().optional(),
@@ -499,11 +497,14 @@ const CallCenter = () => {
   const user_id = selectedUser?.user_id;
 
   const fetchContacts = async () => {
-    const contactList = user_id
-      ? await getContactsByUserId(user_id)
-      : [];
+    const contactList = user_id ? await getContactsByUserId(user_id) : [];
     setContacts(contactList);
   };
+
+  useEffect(() => {
+    console.log("fetching contacts");
+    fetchContacts();
+  }, [selectedUser]);
 
   const fetchCompanyPhone = async () => {
     const companyPhone = await getCompanyUniqueNumber(
@@ -568,13 +569,13 @@ const CallCenter = () => {
 
   const handleOpen = () => {
     setOpenContactSearch(true);
-    (async () => {
-      setLoading({ ...loading, input: true });
-      await sleep(1000); // For demo purposes.
-      setLoading({ ...loading, input: false });
+    // (async () => {
+    //   setLoading({ ...loading, input: true });
+    //   // await sleep(1000); // For demo purposes.
+    //   setLoading({ ...loading, input: false });
 
-      setOptions([...topFilms]);
-    })();
+    //   setOptions([...topFilms]);
+    // })();
   };
   // Add this calculation for total pages
   const totalPages = Math.ceil(paginationInfo.total / rowsPerPage);
@@ -618,9 +619,10 @@ const CallCenter = () => {
         id: call.id,
         contact: call.caller,
         patientId: `${call.to_phone}`,
-        date: dayjs(
-          call.scheduled_time ? call.scheduled_time : call.time
-        ).format("DD/MM/YYYY"),
+        date:
+          dayjs(call.scheduled_time?.split("T")[0]).format(
+            "YYYY-MM-DD HH:mm:ss"
+          ) || dayjs().format("YYYY-MM-DD"),
         status: status,
         length: call.payload?.appointment_length
           ? call.payload.appointment_length + " mins"
@@ -633,7 +635,7 @@ const CallCenter = () => {
     //@ts-ignore
     return [...rows].sort(getComparator(order, orderBy));
   }, [getCallHistory, order, orderBy]);
-  // console.log(selectedContact);
+  // console.log(getCallHistory);
 
   useEffect(() => {
     (async () => {
@@ -656,6 +658,7 @@ const CallCenter = () => {
 
   // Add a function to handle editing a call
   const handleEditCall = (callData: Data) => {
+    console.log(callData);
     setCurrentEditingCall(callData);
 
     const callToEdit = getCallHistory.find((call) => call.id === callData.id);
@@ -1278,36 +1281,43 @@ const CallCenter = () => {
         <Controller
           name="scheduledCallTime"
           control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DateTimePicker
-                shouldDisableDate={(date) => date.isBefore(dayjs(), "day")}
-                ampm={false}
-                {...field}
-                sx={{ width: "100%" }}
-                value={value ? dayjs(value) : null}
-                onChange={(newValue) => {
-                  onChange(
-                    newValue ? newValue.format("YYYY-MM-DD HH:mm:ss") : null
-                  );
-                }}
-                slotProps={{
-                  textField: {
-                    placeholder: "Select Date & Time",
-                    error: !!errors.scheduledCallTime,
-                    helperText: errors.scheduledCallTime?.message,
-                    onKeyDown: (e) => {
-                      if (e.key === "Backspace" && value) {
-                        e.preventDefault();
-                        onChange(null);
-                      }
+          render={({ field: { onChange, value, ...field } }) => {
+            // console.log(value.replace("Z", "").replace("T", " "));
+            return (
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DateTimePicker
+                  shouldDisableDate={(date) => date.isBefore(dayjs(), "day")}
+                  ampm={false}
+                  {...field}
+                  sx={{ width: "100%" }}
+                  value={
+                    value
+                      ? dayjs(value.replace("Z", "").replace("T", " "))
+                      : null
+                  }
+                  onChange={(newValue) => {
+                    onChange(
+                      newValue ? newValue.format("YYYY-MM-DD HH:mm:ss") : null
+                    );
+                  }}
+                  slotProps={{
+                    textField: {
+                      placeholder: "Select Date & Time",
+                      error: !!errors.scheduledCallTime,
+                      helperText: errors.scheduledCallTime?.message,
+                      onKeyDown: (e) => {
+                        if (e.key === "Backspace" && value) {
+                          e.preventDefault();
+                          onChange(null);
+                        }
+                      },
                     },
-                  },
-                }}
-                slots={{ openPickerIcon: calenderIcon }}
-              />
-            </LocalizationProvider>
-          )}
+                  }}
+                  slots={{ openPickerIcon: calenderIcon }}
+                />
+              </LocalizationProvider>
+            );
+          }}
         />
 
         {/* Appointment ID field */}

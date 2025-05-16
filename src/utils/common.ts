@@ -136,12 +136,13 @@ export function formatPhoneNumber(number: string) {
   // Remove all non-numeric characters
   const cleaned = number.replace(/\D/g, "");
 
-  // Ensure it has the correct length (11 digits for US numbers)
-  if (cleaned.length === 11) {
-    return `+1 (${cleaned.slice(0, 3).split("1").join("")}) ${cleaned.slice(
-      3,
-      6
-    )}-${cleaned.slice(6)}`;
+  // Check if it's a US number (with or without country code)
+  if (cleaned.length === 10) {
+    // Format 10-digit number as +1 (XXX)-XXX-XXXX
+    return `+1 (${cleaned.slice(0, 3)})-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  } else if (cleaned.length === 11 && cleaned.charAt(0) === '1') {
+    // Format 11-digit number with country code as +1 (XXX)-XXX-XXXX
+    return `+1 (${cleaned.slice(1, 4)})-${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
   } else {
     return "Invalid number";
   }

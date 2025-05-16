@@ -26,7 +26,7 @@ export const staticText = {
       "Enter the email address associated with your account and we will send you a link to reset your password.",
     resetPasswordButton: "Send Link",
     forgotEmailText: "Forgot your Email?",
-    nameYourCalenderText: "Name your calendar",
+    nameYourCalenderText: "Set up calendar profile",
     nameYourCalenderDescription: "eg. Dr. Zee Cal",
     stepContinueText: "Continue",
     inviteCollaboratorText: "Invite Collaborators?",

@@ -30,3 +30,29 @@
       });
     }
   };
+
+  /**
+ * Generates a cryptographically secure random string for use as a nonce
+ * @param length Length of the random string to generate
+ */
+export const generateRandomString = (length: number): string => {
+  const charset =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  let result = "";
+
+  // Use crypto API for better randomness if available
+  if (window.crypto && window.crypto.getRandomValues) {
+    const values = new Uint32Array(length);
+    window.crypto.getRandomValues(values);
+    for (let i = 0; i < length; i++) {
+      result += charset[values[i] % charset.length];
+    }
+    return result;
+  }
+
+  // Fallback to Math.random if crypto API is not available
+  for (let i = 0; i < length; i++) {
+    result += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return result;
+}
