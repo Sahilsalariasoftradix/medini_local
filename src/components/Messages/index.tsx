@@ -636,7 +636,7 @@ const Messages = () => {
                 <Box
                   sx={{
                     display: "flex",
-                    alignItems: "center",
+                    alignItems: "start",
                     justifyContent:
                       msg.sender === EnMessageRole.USER
                         ? "flex-end"

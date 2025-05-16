@@ -22,7 +22,7 @@ import { useAuth } from "../../store/AuthContext";
 import { useLocation } from "react-router-dom";
 import { getPageNameFromPath, stringToColor } from "../../utils/common";
 import CommonDialog from "../common/CommonDialog";
-import deleteIcon from "../../assets/icons/delete-tr.svg";
+import deleteIconRed from "../../assets/icons/del-red.svg";
 import editIcon from "../../assets/icons/edit-table.svg";
 import AIEnabled from "../../assets/icons/AI-Enabled.svg";
 // import AIPaused from "../../assets/icons/AI-Paused.svg";
@@ -748,7 +748,7 @@ const Header = ({ isMobile, open }: Omit<IHeaderProps, "pageName">) => {
                         >
                           <Box
                             component="img"
-                            src={deleteIcon}
+                            src={deleteIconRed}
                             alt="delete"
                             width={16}
                             height={16}

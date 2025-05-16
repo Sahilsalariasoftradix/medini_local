@@ -304,7 +304,7 @@ const Events = () => {
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
-                  height: "calc(100vh - 300px)",
+                  height: "calc(100vh - 344px)",
                 }}
               >
                 <Typography variant="h6" color="text.secondary">
