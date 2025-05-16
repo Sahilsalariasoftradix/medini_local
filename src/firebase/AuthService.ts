@@ -490,9 +490,13 @@ export const signInWithApple = async (
       const newPropId = await generateSequentialId(EnFirebaseCollections.USERS);
       
       // Extract first and last name
-      const fullName = user.displayName?.split(" ") || ["", ""];
-      const firstName = fullName[0] || "";
-      const lastName = fullName.slice(1).join(" ") || firstName; // Handles multi-word last names
+      // const fullName = user.displayName?.split(" ") || ["", ""];
+      // const firstName = fullName[0] || "";
+      // const lastName = fullName.slice(1).join(" ") || firstName; // Handles multi-word last names
+      
+      const fullName = result._tokenResponse?.fullName;
+const firstName = fullName?.givenName || "";
+const lastName = fullName?.familyName || "";
       
       // Create secretary in API
       try {
