@@ -4,14 +4,16 @@ import { signInWithApple } from "../../firebase/AuthService";
 import { useAuthHook } from "../../hooks/useAuth";
 import { useAuth } from "../../store/AuthContext";
 import { routes } from "../../utils/links";
+import { useState } from "react";
 
 const AppleLoginButton = () => {
   const { text, navigate } = useAuthHook();
   const { setUserDetails } = useAuth();
-
+  //@ts-ignore
+  const [loading, setLoading] = useState(false);
   const handleAppleSignIn = async () => {
     try {
-      await signInWithApple(setUserDetails);
+      await signInWithApple(setUserDetails, setLoading);
       setTimeout(() => {
         navigate(routes.sidebar.bookings.link);
       }, 2000);

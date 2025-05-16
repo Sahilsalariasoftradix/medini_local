@@ -178,7 +178,7 @@ const Messages = () => {
 
   // Filter messages based on search term
   const filteredMessages =
-  chatContacts && chatContacts.length > 0
+    chatContacts && chatContacts.length > 0
       ? chatContacts.filter((contact: any) =>
           contact.contactName
             .toLowerCase()
@@ -542,22 +542,25 @@ const Messages = () => {
                 </Box>
               </Box>
             ))}
-          {!loadingChatContacts &&  filteredMessages && filteredMessages.length === 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                p: 4,
-              }}
-            >
-              <Box sx={{ width: "300px" }}>
-                <Typography className="truncate" variant="bodyLargeExtraBold">
-                  No contacts found matching "{searchValue}"
-                </Typography>
+          {!loadingChatContacts &&
+            filteredMessages &&
+            filteredMessages.length === 0 &&
+            searchValue && (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  p: 4,
+                }}
+              >
+                <Box sx={{ width: "300px" }}>
+                  <Typography className="truncate" variant="bodyLargeExtraBold">
+                    No contacts found matching "{searchValue}"
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          )}
+            )}
           {/* {!loadingChatContacts &&
             chatContacts &&
             chatContacts.length === 0 && (

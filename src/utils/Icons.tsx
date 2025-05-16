@@ -47,6 +47,7 @@ export const SidebarIcons = {
   messages: messages,
   settings: settings,
   help: help, // 'help' icon for Option 4
+  // historyIcon: history,
   // Add more icons as needed
 };
 // Set availability option

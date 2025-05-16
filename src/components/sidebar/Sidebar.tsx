@@ -336,7 +336,7 @@ const Sidebar = ({
       sx={{
         ...listItemStyles,
         pl: iconSrc ? 1 : 5.5,
-        backgroundColor: link && isActive(link) ? "#358FF7" : "transparent",
+        backgroundColor: link && isActive(link) ? "primary.main" : "transparent",
         color: link && isActive(link) ? "#fff" : "#718096",
         "& img": {
           filter: link && isActive(link) ? overRideSvgColor.white : "",
@@ -473,7 +473,7 @@ const Sidebar = ({
               routes.sidebar.contacts.link
             )}
             {renderListItem(
-              undefined,
+              SidebarIcons.history,
               "History",
               undefined,
               routes.sidebar.events.link

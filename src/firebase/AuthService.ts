@@ -450,45 +450,107 @@ export const signInWithGoogle = async (
 };
 
 //* Apple sign-in function using Firebase Authentication
-export const signInWithApple = async (setUserDetails: any): Promise<void> => {
+export const signInWithApple = async (
+  setUserDetails: (details: any) => void,
+  setLoading: (loading: boolean) => void
+): Promise<string | void> => {
   try {
     // Step 1: Create an instance of the Apple OAuth provider
     const provider = new OAuthProvider(EnSocialLogin.APPLE);
-
+    
+    // Add scopes to request profile information
+    provider.addScope('email');
+    provider.addScope('name');
+    
+    // Add a nonce for security (generate a random string)
+    const nonce = generateRandomString(32); // Implement this function
+    provider.setCustomParameters({
+      nonce: nonce
+    });
+    
     // Step 2: Trigger Apple sign-in popup
     const result = await signInWithPopup(firebaseAuth, provider);
     const user = result.user;
 
     if (!user) throw new Error("Apple sign-in failed. No user data found.");
-
-    // Step 3: Save user details to Firestore
+    setLoading(true);
+    
+    // Step 3: Check if user already exists in Firestore
     const userRef = doc(
       firebaseFirestore,
       EnFirebaseCollections.USERS,
       user.uid
     );
-    const newPropId = await generateSequentialId(EnFirebaseCollections.USERS);
-    const userData = {
-      uid: user.uid,
-      uuid: newPropId, // Auto-incremented ID
-      firstName: user.displayName?.split(" ")[0] || "",
-      lastName: user.displayName?.split(" ")[1] || "",
-      email: user.email || "",
-      photoURL: user.photoURL || "",
-      createdAt: Timestamp.now().seconds,
-      updatedAt: null,
-      deletedAt: null,
-      status: EnVerifiedStatus.VERIFIED,
-      onboardingStatus: EnOnboardingStatus.STATUS_0,
-      loginType: EnSocialLogin.APPLE,
-    };
-
-    await setDoc(userRef, userData, { merge: true });
-
-    // Step 4: Update user details in state for instant UI update
-    setUserDetails(userData);
-
-    console.log("Apple Sign-In Successful");
+    const userSnap = await getDoc(userRef);
+    
+    let userDetails;
+    
+    if (!userSnap.exists()) {
+      // Generate auto-incrementing ID
+      const newPropId = await generateSequentialId(EnFirebaseCollections.USERS);
+      
+      // Extract first and last name
+      const fullName = user.displayName?.split(" ") || ["", ""];
+      const firstName = fullName[0] || "";
+      const lastName = fullName.slice(1).join(" ") || firstName; // Handles multi-word last names
+      
+      // Create secretary in API
+      try {
+        const payload = {
+          first_name: firstName,
+          last_name: lastName,
+          email: user.email,
+          password: "medini-ai",
+        };
+        //@ts-ignore
+        const response = await createSecretary(payload);
+        
+        // Get the secretary ID from the response
+        const secretaryId = response.secretary.secretary_id;
+        
+        userDetails = {
+          uid: user.uid,
+          uuid: newPropId, // Auto-incremented ID
+          firstName,
+          lastName,
+          email: user.email || "",
+          photoURL: user.photoURL || "",
+          createdAt: Timestamp.now().seconds,
+          updatedAt: null,
+          deletedAt: null,
+          status: EnVerifiedStatus.VERIFIED,
+          onboardingStatus: EnOnboardingStatus.STATUS_0,
+          loginType: EnSocialLogin.APPLE,
+          secretaryID: secretaryId, // Add secretary ID to user details
+        };
+      } catch (apiError) {
+        console.error("Failed to create secretary record:", apiError);
+        
+        // Proceed with user creation without secretary ID if API call fails
+        userDetails = {
+          uid: user.uid,
+          uuid: newPropId,
+          firstName,
+          lastName,
+          email: user.email || "",
+          photoURL: user.photoURL || "",
+          createdAt: Timestamp.now().seconds,
+          updatedAt: null,
+          deletedAt: null,
+          status: EnVerifiedStatus.VERIFIED,
+          onboardingStatus: EnOnboardingStatus.STATUS_0,
+          loginType: EnSocialLogin.APPLE,
+        };
+      }
+      
+      await setDoc(userRef, userDetails);
+    } else {
+      userDetails = userSnap.data();
+    }
+    
+    setUserDetails(userDetails);
+    
+    return "Successfully signed in with Apple";
   } catch (error: any) {
     console.error("Apple Sign-In Failed:", error.message);
     throw new Error(getAuthErrorMessage(error.code));
@@ -881,3 +943,28 @@ export const getChatMessages = async (
     throw new Error("Failed to retrieve chat messages");
   }
 };
+
+/**
+ * Generates a cryptographically secure random string for use as a nonce
+ * @param length Length of the random string to generate
+ */
+function generateRandomString(length: number): string {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  let result = '';
+  
+  // Use crypto API for better randomness if available
+  if (window.crypto && window.crypto.getRandomValues) {
+    const values = new Uint32Array(length);
+    window.crypto.getRandomValues(values);
+    for (let i = 0; i < length; i++) {
+      result += charset[values[i] % charset.length];
+    }
+    return result;
+  }
+  
+  // Fallback to Math.random if crypto API is not available
+  for (let i = 0; i < length; i++) {
+    result += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return result;
+}

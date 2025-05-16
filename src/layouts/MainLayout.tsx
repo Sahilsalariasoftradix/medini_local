@@ -21,8 +21,13 @@ const MainLayout = () => {
     setNestedOpen(!nestedOpen);
   };
   // Function to check if the route is active
-  const isActive = (link: string) => location.pathname === link;
-
+  const isActive = (link: string) => {
+    const currentPath = location.pathname;
+    if (link === "/bookings") {
+      return currentPath === "/bookings" || currentPath === "/";
+    }
+    return currentPath === link;
+  };
   const toggleDrawer = () => {
     setOpen(!open);
   };
@@ -35,11 +40,7 @@ const MainLayout = () => {
       <CssBaseline />
 
       {/* Header */}
-      <Header
-        isMobile={isMobile}
-        open={open}
-        toggleDrawer={toggleDrawer}
-      />
+      <Header isMobile={isMobile} open={open} toggleDrawer={toggleDrawer} />
 
       {/* Sidebar */}
       <Sidebar
@@ -57,7 +58,7 @@ const MainLayout = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          mt:3,
+          mt: 3,
           width: isMobile
             ? "100%"
             : `calc(100% - ${open ? drawerWidth : 80}px)`,
