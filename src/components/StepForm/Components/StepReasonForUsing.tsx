@@ -6,9 +6,10 @@ import { getReasons } from "../../../firebase/AuthService";
 import { errorFetchingReasonsMessageText } from "../../../utils/errorHandler";
 import { useAuthHook } from "../../../hooks/useAuth";
 import CommonSnackbar from "../../common/CommonSnackbar";
+import CommonLink from "../../common/CommonLink";
 
 const ReasonForUsing: React.FC = () => {
-  const { userDetails, updateUserDetails, skipNextStep } = useStepForm();
+  const { userDetails, updateUserDetails, skipNextStep} = useStepForm();
   const {
     setSnackbarOpen,
     snackbarMessage,
@@ -63,7 +64,13 @@ const ReasonForUsing: React.FC = () => {
     // As soon as we select the value go to the next step
     skipNextStep();
   };
-
+  const handleSkip = () => {
+    updateUserDetails({
+      reasonForUsing: "",
+      reasonForUsingStep: "",
+    });
+    skipNextStep();
+  };
   return (
     <Box
       display={"flex"}
@@ -84,89 +91,98 @@ const ReasonForUsing: React.FC = () => {
           Tell us about your practice and we will make the right <br />{" "}
           recommendations for you
         </Typography>{" "}
-        <Box
-          mt={8}
-          display={"flex"}
-          justifyContent={"center"}
-          alignItems={"center"}
-          gap={2}
-          flexWrap={"wrap"}
-        >
-          {loading ? (
-            <>
-              {
-                //@ts-ignore
-                [...Array(4)].map((e, i) => (
-                  <Skeleton
-                    key={i}
-                    variant="rectangular"
-                    sx={{
-                      borderRadius: "40px",
-                      width: { xs: "180px", md: "200px" },
-                      height: { xs: "180px", md: "200px" },
-                    }}
-                  />
-                ))
-              }
-            </>
-          ) : (
-            <>
-              {reasons.map((reason) => (
-                <Box
-                  key={reason.id}
-                  display={"flex"}
-                  justifyContent={"center"}
-                  alignItems={"center"}
-                  gap={2}
-                  flexDirection={"column"}
-                  sx={{
-                    bgcolor:
-                      userDetails.reasonForUsing === reason.id
-                        ? "primary.main"
-                        : "additional.white",
-                    color:
-                      userDetails.reasonForUsing === reason.id
-                        ? "additional.white"
-                        : "secondary.main",
-                    borderRadius: "40px",
-                    border: "1px solid #E2E8F0",
-                    // p: 10,
-                    height: { xs: "180px", md: "200px" },
-                    width: { xs: "180px", md: "200px" },
-                    "&:hover": {
-                      background: "#358FF7",
-                      color: "white",
-                    },
-                  }}
-                  className={
-                    userDetails.reasonForUsing === reason.id ? "active" : ""
-                  }
-                  onClick={() => handleReasonChange(reason.id, reason.name)}
-                >
+        <Box display={"flex"} flexDirection={"column"} gap={2}  alignItems={'center'}>
+          <Box
+            mt={8}
+            display={"flex"}
+            justifyContent={"center"}
+            alignItems={"center"}
+            gap={2}
+            flexWrap={"wrap"}
+          >
+            {loading ? (
+              <>
+                {
+                  //@ts-ignore
+                  [...Array(4)].map((e, i) => (
+                    <Skeleton
+                      key={i}
+                      variant="rectangular"
+                      sx={{
+                        borderRadius: "40px",
+                        width: { xs: "180px", md: "200px" },
+                        height: { xs: "180px", md: "200px" },
+                      }}
+                    />
+                  ))
+                }
+              </>
+            ) : (
+              <>
+                {reasons.map((reason) => (
                   <Box
-                    sx={{
-                      height: "56px",
-                      width: "56px",
-                      background: "#FAFAFA",
-                      borderRadius: "50% ",
-                    }}
+                    key={reason.id}
                     display={"flex"}
                     justifyContent={"center"}
                     alignItems={"center"}
+                    gap={2}
+                    flexDirection={"column"}
+                    sx={{
+                      bgcolor:
+                        userDetails.reasonForUsing === reason.id
+                          ? "primary.main"
+                          : "additional.white",
+                      color:
+                        userDetails.reasonForUsing === reason.id
+                          ? "additional.white"
+                          : "secondary.main",
+                      borderRadius: "40px",
+                      border: "1px solid #E2E8F0",
+                      // p: 10,
+                      height: { xs: "180px", md: "200px" },
+                      width: { xs: "180px", md: "200px" },
+                      "&:hover": {
+                        background: "#358FF7",
+                        color: "white",
+                      },
+                    }}
+                    className={
+                      userDetails.reasonForUsing === reason.id ? "active" : ""
+                    }
+                    onClick={() => handleReasonChange(reason.id, reason.name)}
                   >
                     <Box
-                      component="img"
-                      alt="The house from the offer."
-                      src={reason.icon}
-                    />
+                      sx={{
+                        height: "56px",
+                        width: "56px",
+                        background: "#FAFAFA",
+                        borderRadius: "50% ",
+                      }}
+                      display={"flex"}
+                      justifyContent={"center"}
+                      alignItems={"center"}
+                    >
+                      <Box
+                        component="img"
+                        alt="The house from the offer."
+                        src={reason.icon}
+                      />
+                    </Box>
+                    <Typography
+                      align="center"
+                      px={2}
+                      variant="bodyLargeSemiBold"
+                    >
+                      {reason.name}
+                    </Typography>
                   </Box>
-                  <Typography align="center" px={2} variant="bodyLargeSemiBold">
-                    {reason.name}
-                  </Typography>
-                </Box>
-              ))}
-            </>
-          )}
+                ))}
+              </>
+            )}
+          </Box>
+          <CommonLink mt={3} onClick={() => handleSkip()} to={"#"} variant="bodyMediumSemiBold">
+            Skip
+          </CommonLink>
         </Box>
         {/* Snackbar */}
         <CommonSnackbar
